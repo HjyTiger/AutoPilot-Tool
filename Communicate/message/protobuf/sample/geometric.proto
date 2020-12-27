@@ -1,0 +1,27 @@
+syntax = "proto2";
+
+option optimize_for = LITE_RUNTIME;
+
+
+package sample;
+
+
+message Point3D {
+  optional double x = 1 [default = nan];
+  optional double y = 2 [default = nan];
+  optional double z = 3 [default = nan];
+}
+
+
+message Line{
+  repeated Point3D pts = 1;
+}
+
+message Lines{
+  
+}
+
+message Sample{
+  repeated Line    lines = 1;
+  repeated Point3D pts   = 2;
+}

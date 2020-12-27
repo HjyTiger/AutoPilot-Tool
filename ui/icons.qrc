@@ -1,0 +1,24 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file alias="stop">icons/stop.png</file>
+        <file alias="step">icons/step.png</file>
+        <file alias="snapshot">icons/snapshoot.jpg</file>
+        <file alias="record">icons/record.jpg</file>
+        <file alias="player">icons/player.ico</file>
+        <file alias="play">icons/play.png</file>
+        <file alias="pause">icons/pause.png</file>
+        <file alias="next">icons/next.png</file>
+        <file alias="loop_order">icons/loop_order.png</file>
+        <file alias="loop_rewind">icons/loop_rewind.png</file>
+        <file alias="loop_one">icons/loop_one.png</file>
+        <file alias="loop_no">icons/loop_no.png</file>
+        <file alias="logger_stop">icons/logger_stop.png</file>
+        <file alias="logger_start">icons/logger_start.png</file>
+        <file alias="looger">icons/logger.ico</file>
+        <file alias="last">icons/last.png</file>
+        <file alias="chart_icon">icons/chart.ico</file>
+        <file alias="plus">icons/plus.jpeg</file>
+        <file alias="minus">icons/minus.jpeg</file>
+        <file alias="AutoPilotTool">icons/AutoPilotTool.png</file>
+    </qresource>
+</RCC>
