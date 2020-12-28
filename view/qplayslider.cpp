@@ -240,28 +240,12 @@ void QPlaySlider::UpdatePaint()
         return;
     }
 
-//    if(!m_bUpdate)
-//    {
-//        return;
-//    }
-
-
     DEBUGTOOL::CPlayConfig * pPlayConfig = DEBUGTOOL::CPlayConfig::GetInstance();
     if( NULL == pPlayConfig)
     {
         return ;
     }
     std::vector<DEBUGTOOL::CTagInfo*>* pTags = pPlayConfig->GetLogTestTags(m_nStartTime, m_nStopTime);
-
-//    void *pTagInfos = GetTestTags();
-//    if(NULL == pTagInfos)
-//    {
-//        return;
-//    }
-
-//    m_mtuTestTagsUpdate.lock();
-
-//    std::vector<DEBUGTOOL::CTagInfo*> * pTags = static_cast<std::vector<DEBUGTOOL::CTagInfo*>*>(pTagInfos);
     if(NULL == pTags)
     {
         return;
