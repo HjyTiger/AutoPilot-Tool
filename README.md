@@ -135,6 +135,8 @@ Some other problems are from openCV,I used latest version openCV-4.5,And I put t
 
 I have upload  this project for the first time, And not find these problem at  beginning,I will fix these problems later and Improve the documentation.
 
+Some(but not all) prerequisites third party libraries is put under the AutoPilot-Tool/3rdparty/package.zip
+
 I add some resources in the fold Resources, you shoule add 3Dmaterial ,Tags.json to the same level directory with AutoPilot-tool.
 
  Hope it will help, Good luck.
