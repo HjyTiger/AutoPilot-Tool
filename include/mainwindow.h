@@ -83,6 +83,14 @@ public:
         LOGGER_WORKING,
         PLAYER_WORKING
     };
+    enum THEME_TYPE{
+        Theme_Simple,
+        Theme_ScienceFiction,
+        Theme_Girl,
+        Theme_Natural,
+        Theme_Laker,
+        Theme_CyberPunk
+    };
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
@@ -176,6 +184,7 @@ private slots:
     void OnShowLoadLogTagInfo(LogFileInfo logfileinfo);
     void OnPropertyOperationAction(int propOper,PropertyOperationValue propValue);
     void OnDoubleClickedLogTagItem(QTreeWidgetItem *, int);
+    void OnChangeTheme(THEME_TYPE themeType);
     /* Send Message window slot*/
     void OnSendMessageBrowserSendMsgName(QString msgName);
     /* Data Plot window slot*/

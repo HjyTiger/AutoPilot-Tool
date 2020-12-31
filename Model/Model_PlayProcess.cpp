@@ -280,6 +280,8 @@ void PlayProcess::playEvent(){
                 float playTimeInterval = static_cast<float>(m_curLogFileInfo->getEventTimeInterval(sp_eventWrap->event()->timestamp))/GetPlaySpeed();
                 long int nTimeToDelay = static_cast<long int >(playTimeInterval);
                 PreciseDelay(nTimeToDelay);
+                // m_curLogFileInfo->nLastEventTimeStamp    = m_curLogFileInfo->nCurrentEventTimeStamp;
+                // m_curLogFileInfo->nCurrentEventTimeStamp = sp_eventWrap->event()->timestamp;
             }
             else{//no more event in the file, sleep to wait for seek to new time stamp;
                 //if loop, reset seektotimestamp; else, just sleep;

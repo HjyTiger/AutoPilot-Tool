@@ -105,6 +105,9 @@ void QOpenglDrawCell::generate(tool::GL_Data & gldata){
     glbufmark.width = geoElem.width;
     glbufmark.size  = geoElem.geo_data.size()/stride;
     glbufmark.start = gl_data.size()/stride - glbufmark.size;
+    glbufmark.tag.str_tags.swap(geoElem.m_tag.str_tags);
+    glbufmark.tag.color = geoElem.m_tag.color;
+    glbufmark.tag.left_bottom_pos = geoElem.m_tag.left_bottom_pos;
     gl_bufferMarks.emplace_back(glbufmark);
   }
   texture_data.swap(gldata.texture_elements);
@@ -227,6 +230,9 @@ QViewerOpenGLWidget::QViewerOpenGLWidget(QWidget *parent)
     m_isUpdateAbled(true),
     m_isMouseAbled(true),
     m_isKeyboardAbled(true),
+    m_MouseSensitivity(5),
+    m_WheelSensetivity(5),
+    m_keyBoardSensitivity(5),
     m_drawGrid(true),
     m_gridVertexIdx(-1),
     m_gridConfig(),
@@ -870,6 +876,20 @@ void QViewerOpenGLWidget::drawInformations(QPainter & painter){
         }
         /* draw text*/
         if(m_isShowText.load()){
+          /* draw gl tag*/
+          // std::vector<glBufferMark> & bufMark_Vec = drawIter->second.gl_bufferMarks;
+          // for(int i = 0;i < bufMark_Vec.size();i++){
+          //   glBufferMark & bufmark = bufMark_Vec[i];
+          //   tool::GL_Tag_Element & gl_tag = bufmark.tag;
+          //   QVector4D gl_Position = m_camera->toMatrix()*QVector4D(gl_tag.left_bottom_pos,1.0);
+          //   painter.setPen(gl_tag.color);
+          //   for(int j = 0;j < gl_tag.str_tags.size();j++){
+          //     int loc_x = -gl_Position.x()/gl_Position.w() * this->frameGeometry().width();
+          //     int loc_y = -gl_Position.y()/gl_Position.w() * this->frameGeometry().height();
+          //     painter.drawText(loc_x,loc_y,gl_tag.str_tags[j]);
+          //   }
+          // }
+          /* draw screen text*/
           std::vector<tool::GL_Text_Element> & glText_Vec = drawIter->second.text_data;
           for(int i = 0;i < glText_Vec.size();i++){
             tool::GL_Text_Element text_ele = glText_Vec[i];
@@ -1100,22 +1120,22 @@ void QViewerOpenGLWidget::keyPressEvent(QKeyEvent *event) {
   }
   switch (event->key()) {
     case Qt::Key_W:
-      m_camera->moveForward(30.0);
+      m_camera->moveForward(10.0f * m_keyBoardSensitivity);
       break;
     case Qt::Key_S:
-      m_camera->moveBack(30.0);
+      m_camera->moveBack(10.0f * m_keyBoardSensitivity);
       break;
     case Qt::Key_A:
-      m_camera->moveLeft(30.0);
+      m_camera->moveLeft(10.0f * m_keyBoardSensitivity);
       break;
     case Qt::Key_D:
-      m_camera->moveRight(30.0);
+      m_camera->moveRight(10.0f * m_keyBoardSensitivity);
       break;
     case Qt::Key_Q:
-      m_camera->moveUp(30.0);
+      m_camera->moveUp(10.0f * m_keyBoardSensitivity);
       break;
     case Qt::Key_E:
-      m_camera->moveDown(30.0);
+      m_camera->moveDown(10.0f * m_keyBoardSensitivity);
       break;
     case Qt::Key_C:
       m_drawAxes = !m_drawAxes;
@@ -1149,6 +1169,18 @@ void QViewerOpenGLWidget::keyPressEvent(QKeyEvent *event) {
       break;
     case Qt::Key_I:  // log current camera data
       m_isShowImage = !m_isShowImage;
+      break;
+    case Qt::Key_Left:
+      m_camera->rotate(-0.1f * m_keyBoardSensitivity, m_camera->upVector());
+      break;
+    case Qt::Key_Right:
+      m_camera->rotate(0.1f * m_keyBoardSensitivity, m_camera->upVector());
+      break;
+    case Qt::Key_Up:
+      m_camera->rotate(0.1f * m_keyBoardSensitivity, m_camera->rightVector());
+      break;
+    case Qt::Key_Down:
+      m_camera->rotate(-0.1f * m_keyBoardSensitivity, m_camera->rightVector());
       break;
   }
   if(m_isUpdateAbled.load()){
@@ -1186,23 +1218,24 @@ void QViewerOpenGLWidget::mouseMoveEvent(QMouseEvent *event) {
 
   int upDown = m_camera->upsideDown() ? -1 : 1;
 
+  float operaValue = 0.04f * m_MouseSensitivity;
   if (event->buttons() & Qt::LeftButton) {
     if (m_camera->cameraMode() == CameraMode::Free) {
-      m_camera->rotate(-0.2f * dx, m_camera->upVector());
-      m_camera->rotate(-0.2f * dy, m_camera->rightVector());
+      m_camera->rotate(-operaValue * dx, m_camera->upVector());
+      m_camera->rotate(-operaValue * dy, m_camera->rightVector());
     } else {
       // if the up vector actually points down, reverse rotation
-      m_camera->rotate(-0.2f * dx, upDown * m_camera->worldUpVector());
-      m_camera->rotate(0.2f * dy, upDown * QVector3D::crossProduct(m_camera->forwardVector(), m_camera->worldUpVector()));
+      m_camera->rotate(-operaValue * dx, upDown * m_camera->worldUpVector());
+      m_camera->rotate(operaValue * dy, upDown * QVector3D::crossProduct(m_camera->forwardVector(), m_camera->worldUpVector()));
       //m_camera->rotate(-0.2f * dy, upDown * QVector3D::crossProduct(m_camera->forwardVector(), m_camera->worldUpVector()));
     }
   } else if (event->buttons() & Qt::RightButton) {
     if (m_camera->cameraMode() == CameraMode::Free) {
-      m_camera->rotate(0.2f * dx, m_camera->forwardVector());
-      m_camera->rotate(-0.2f * dy, m_camera->rightVector());
+      m_camera->rotate(operaValue * dx, m_camera->forwardVector());
+      m_camera->rotate(-operaValue * dy, m_camera->rightVector());
     } else {
-      m_camera->rotate(-0.2f * dx, m_camera->forwardVector());
-      m_camera->rotate(-0.2f * dy, upDown * QVector3D::crossProduct(m_camera->forwardVector(), m_camera->worldUpVector()));
+      m_camera->rotate(-operaValue * dx, m_camera->forwardVector());
+      m_camera->rotate(-operaValue * dy, upDown * QVector3D::crossProduct(m_camera->forwardVector(), m_camera->worldUpVector()));
     }
   } else if (event->buttons() & Qt::MiddleButton) {
     if (m_camera->cameraMode() == CameraMode::Free) {
@@ -1226,7 +1259,7 @@ void QViewerOpenGLWidget::wheelEvent(QWheelEvent *event) {
   if (numDeg.isNull())
     return;
 
-  float factor = 1500;
+  float factor = 300 * m_WheelSensetivity;
 
   if (event->modifiers() & Qt::ShiftModifier)
     factor /= 10;

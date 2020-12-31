@@ -57,9 +57,13 @@
 
 enum PropertyOperation{
     //common
+    THEME_CHANGE,
     VIEW_CHANGE,
     ENABLE_MOUSE,
     ENABLE_KEYBOARD,
+    MOUSE_SENSITIVITY_CHANGE,
+    MOUSEWHEEL_SENSITIVITY_CHANGE,
+    KEYBOARD_SENSITIVITY_CHANGE,
     //logger
     CHANGE_PROJECT_NAME,
     CHANGE_SW_VERSION,
@@ -108,15 +112,16 @@ public:
     ~QOptionPropertyBrowser();
 public:
     void Init();
+    void InitSignalAndSlot();
     void InitCommonProperty();
     void InitLoggerProperty();
     void InitPlayerProperty();
-    void InitSignalAndSlot();
 private:
     QtStringPropertyManager *  m_stringManager;
     QtBoolPropertyManager *    m_boolManager;
     QtEnumPropertyManager *    m_enumManager;
     QtIntPropertyManager *     m_intManager;
+    QtIntPropertyManager *     m_intManager_slider;
     QtDoublePropertyManager *  m_doubleManager;
 
     QtCheckBoxFactory *        m_checkBoxFactory;
@@ -124,6 +129,7 @@ private:
     QtLineEditFactory *        m_lineEditFactory;
     QtEnumEditorFactory *      m_comboBoxFactory;
     QtDoubleSpinBoxFactory *   m_doubleSpinBoxFactory;
+    QtSliderFactory *          m_sliderFactory;
 
     QtGroupPropertyManager *   m_groupManager;
 
@@ -132,10 +138,11 @@ signals:
     void updatePropertyOperation(int operation,PropertyOperationValue operValue);
     void operationInformation(QString msgInfo,QColor strcolor);
 public slots:
-    void OnStringChanged(QtProperty *property, QString val);
-    void OnBoolChanged(QtProperty *property, bool val);
-    void OnEnumChanged(QtProperty *property, int val);
-    void OnIntChanged(QtProperty *property, int val);
+    void OnStringChanged(QtProperty * property, QString val);
+    void OnBoolChanged(QtProperty * property, bool val);
+    void OnEnumChanged(QtProperty * property, int val);
+    void OnIntChanged(QtProperty * property, int val);
+    void OnIntSliderChanged(QtProperty * property, int val);
     void OnDoubleChanged(QtProperty *property, double val);
     
 };

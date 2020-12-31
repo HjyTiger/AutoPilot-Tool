@@ -151,6 +151,9 @@ public:
     void SetLoopMode(PLAY_LOOP_MODE loop);
     PLAY_LOOP_MODE GetLoopMode();
 
+    void SetPublishLCM(bool isPublish){
+        m_isPublishEvent.store(isPublish);
+    }
     
 private:
     /* private function*/

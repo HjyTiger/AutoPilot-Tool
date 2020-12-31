@@ -78,18 +78,7 @@ bool MainWindow::Init(){
 
     InitializeSignalsAndSlots();
 
-    QPalette palette(this->palette());
-    palette.setColor(QPalette::Window, Qt::black);
-    palette.setColor(QPalette::WindowText,Qt::white);
-    palette.setColor(QPalette::Background,Qt::black);
-    palette.setColor(QPalette::Foreground,QColor(250,250,210));
-    palette.setColor(QPalette::Base,Qt::white);
-    palette.setColor(QPalette::AlternateBase,QColor(245,245,220));
-    palette.setColor(QPalette::ToolTipBase,Qt::black);
-    palette.setColor(QPalette::Text,Qt::black);
-    palette.setColor(QPalette::Button,Qt::darkCyan);
-    palette.setColor(QPalette::ButtonText,Qt::black);
-    this->setPalette(palette);
+    OnChangeTheme(Theme_ScienceFiction);
     return true;
 }
 /* private function*/
@@ -171,8 +160,8 @@ void MainWindow::InitDataPlotWindow(){
     ui->verticalLayout_dataPlot->addWidget(sp_dataPlotWidget.get());
     ui->verticalLayout_dataPlot->setMargin(0);
     ui->verticalLayout_dataPlot->setSpacing(0);
-    connect(sp_dataPlotWidget.get(), SIGNAL(subscribeMsgValue(QString,QString)),m_dataManager,SLOT(OnSubscribeMsgValue(QString,QString)));
-    connect(sp_dataPlotWidget.get(), SIGNAL(UnsubscribeMsgValue(QString,QString)),m_dataManager,SLOT(OnUnSubscribeMsgValue(QString,QString)));
+    // connect(sp_dataPlotWidget.get(), SIGNAL(subscribeMsgValue(QString,QString)),m_dataManager,SLOT(OnSubscribeMsgValue(QString,QString)));
+    // connect(sp_dataPlotWidget.get(), SIGNAL(UnsubscribeMsgValue(QString,QString)),m_dataManager,SLOT(OnUnSubscribeMsgValue(QString,QString)));
 
     connect(sp_dataPlotWidget.get(), SIGNAL(addNewDataPlotWindow(QDataPlotWidget *)),this,SLOT(OnAddNewDataPlotWindow(QDataPlotWidget *)));
     connect(sp_dataPlotWidget.get(), SIGNAL(removeDataPlotWindow(QDataPlotWidget *)),this,SLOT(OnRemoveDataPlotWindow(QDataPlotWidget *)));
@@ -962,6 +951,11 @@ void MainWindow::OnShowLoadLogTagInfo(LogFileInfo logfileinfo){
 void MainWindow::OnPropertyOperationAction(int propOper,PropertyOperationValue propValue){
     switch (propOper)
     {
+    case THEME_CHANGE:
+        {
+            OnChangeTheme(static_cast<THEME_TYPE>(propValue.value_enum));
+        }
+        break;
     case VIEW_CHANGE:
         {
             ui->openGLWidget_viewer->setCameraView(propValue.value_enum);
@@ -971,10 +965,25 @@ void MainWindow::OnPropertyOperationAction(int propOper,PropertyOperationValue p
         {
             ui->openGLWidget_viewer->setMouseAbled(propValue.value_flag);
         }
-        break;    
+        break;
+    case MOUSE_SENSITIVITY_CHANGE:
+        {
+            ui->openGLWidget_viewer->setMouseSensitivity(propValue.value_int);
+        }
+        break;  
+    case MOUSEWHEEL_SENSITIVITY_CHANGE:
+        {
+            ui->openGLWidget_viewer->setMouseWheelSensitivity(propValue.value_int);
+        }
+        break;
     case ENABLE_KEYBOARD:
         {
             ui->openGLWidget_viewer->setKeyboardAbled(propValue.value_flag);
+        }
+        break;
+    case KEYBOARD_SENSITIVITY_CHANGE:
+        {
+            ui->openGLWidget_viewer->setKeyBoardSensitivity(propValue.value_int);
         }
         break;  
     case CHANGE_PROJECT_NAME:
@@ -1029,6 +1038,11 @@ void MainWindow::OnPropertyOperationAction(int propOper,PropertyOperationValue p
                 m_pLogProcess->setRecordBytes(nRecordBytes);
             }
             m_pLogProcess->setRecordMode(propValue.value_enum);
+        }
+        break;
+    case ENABLE_PUBLISH_LCM:
+        {
+            m_pPlayProcess->SetPublishLCM(propValue.value_flag);
         }
         break;
     case CHANGE_PLAY_SPEED:
@@ -1086,6 +1100,100 @@ void MainWindow::OnDoubleClickedLogTagItem(QTreeWidgetItem * clickedItem, int co
     }else{
 
     }
+}       
+
+void MainWindow::OnChangeTheme(THEME_TYPE themeType){
+    QPalette palette(this->palette());
+    switch (themeType)
+    {
+    case Theme_Simple:
+        {
+            palette.setColor(QPalette::Window, Qt::white);
+            palette.setColor(QPalette::WindowText,Qt::black);
+            palette.setColor(QPalette::Background,Qt::white);
+            palette.setColor(QPalette::Foreground,Qt::black);
+            palette.setColor(QPalette::Base,Qt::white);
+            palette.setColor(QPalette::AlternateBase,Qt::black);
+            palette.setColor(QPalette::ToolTipBase,Qt::black);
+            palette.setColor(QPalette::Text,Qt::black);
+            palette.setColor(QPalette::Button,Qt::white);
+            palette.setColor(QPalette::ButtonText,Qt::black);
+        }
+        break;
+    case Theme_ScienceFiction:
+        {
+            palette.setColor(QPalette::Window, Qt::black);
+            palette.setColor(QPalette::WindowText,Qt::white);
+            palette.setColor(QPalette::Background,Qt::black);
+            palette.setColor(QPalette::Foreground,QColor(250,250,210));
+            palette.setColor(QPalette::Base,Qt::white);
+            palette.setColor(QPalette::AlternateBase,QColor(245,245,220));
+            palette.setColor(QPalette::ToolTipBase,Qt::black);
+            palette.setColor(QPalette::Text,Qt::black);
+            palette.setColor(QPalette::Button,Qt::darkCyan);
+            palette.setColor(QPalette::ButtonText,Qt::black);
+        }
+        break;
+    case Theme_Girl:
+        {
+            palette.setColor(QPalette::Window, QColor(255,105,180));
+            palette.setColor(QPalette::WindowText,Qt::white);
+            palette.setColor(QPalette::Background,QColor(255,20,147));
+            palette.setColor(QPalette::Foreground,QColor(0,0,0));
+            palette.setColor(QPalette::Base,QColor(255,187,255));
+            palette.setColor(QPalette::AlternateBase,QColor(245,245,220));
+            palette.setColor(QPalette::ToolTipBase,Qt::black);
+            palette.setColor(QPalette::Text,Qt::black);
+            palette.setColor(QPalette::Button,QColor(255,0,255));
+            palette.setColor(QPalette::ButtonText,Qt::black);
+        }
+        break;
+    case Theme_Natural:
+        {
+            palette.setColor(QPalette::Window, QColor(0,238,0));
+            palette.setColor(QPalette::WindowText,Qt::white);
+            palette.setColor(QPalette::Background,QColor(124,252,0));
+            palette.setColor(QPalette::Foreground,QColor(0,0,0));
+            palette.setColor(QPalette::Base,QColor(255,187,255));
+            palette.setColor(QPalette::AlternateBase,QColor(0,139,69));
+            palette.setColor(QPalette::ToolTipBase,Qt::black);
+            palette.setColor(QPalette::Text,Qt::black);
+            palette.setColor(QPalette::Button,QColor(255,193,37));
+            palette.setColor(QPalette::ButtonText,Qt::black);
+        }
+        break;   
+    case Theme_Laker:
+        {
+            palette.setColor(QPalette::Window, QColor(255,215,0));
+            palette.setColor(QPalette::WindowText,Qt::black);
+            palette.setColor(QPalette::Background,QColor(138,43,226));
+            palette.setColor(QPalette::Foreground,QColor(0,0,0));
+            palette.setColor(QPalette::Base,QColor(255,187,255));
+            palette.setColor(QPalette::AlternateBase,QColor(0,139,69));
+            palette.setColor(QPalette::ToolTipBase,Qt::black);
+            palette.setColor(QPalette::Text,Qt::black);
+            palette.setColor(QPalette::Button,QColor(255,215,0));
+            palette.setColor(QPalette::ButtonText,Qt::black);
+        }
+        break;
+    case Theme_CyberPunk:
+        {
+            palette.setColor(QPalette::Window, QColor(255,255,0));
+            palette.setColor(QPalette::WindowText,Qt::black);
+            palette.setColor(QPalette::Background,QColor(255,255,0));
+            palette.setColor(QPalette::Foreground,QColor(0,0,0));
+            palette.setColor(QPalette::Base,QColor(255,187,255));
+            palette.setColor(QPalette::AlternateBase,QColor(0,139,69));
+            palette.setColor(QPalette::ToolTipBase,Qt::black);
+            palette.setColor(QPalette::Text,Qt::black);
+            palette.setColor(QPalette::Button,QColor(0,0,225));
+            palette.setColor(QPalette::ButtonText,Qt::black);
+        }
+        break;
+    default:
+        break;
+    }
+    this->setPalette(palette); 
 }
 
 void MainWindow::OnSendMessageBrowserSendMsgName(QString msgName){

@@ -51,6 +51,7 @@
 #include <QString>
 #include <QImage> 
 #include <QColor> 
+#include <QVector3D> 
 #include <QRectF>
 #include "opencv2/core.hpp"
 #include "ThreadSafe_STL/thread_safe_map.h"
@@ -110,6 +111,17 @@ public:
 
 const int GL_TEXTURE_IMAGE = 10;
 
+class GL_Tag_Element{
+public:
+    GL_Tag_Element():
+    color(255,255,255),left_bottom_pos(0.0,0.0,0.0){}
+    ~GL_Tag_Element(){}
+public:
+    std::vector<QString>     str_tags;
+    QColor                   color;
+    QVector3D                left_bottom_pos;
+};
+
 class GL_Geo_Element{
 public:
     GL_Geo_Element():mode(0),width(5),color(255,255,255){}
@@ -120,6 +132,7 @@ public:
     GLsizei                data_size;
     GLfloat                width;
     QColor                 color;
+    GL_Tag_Element         m_tag;
 
 };
 

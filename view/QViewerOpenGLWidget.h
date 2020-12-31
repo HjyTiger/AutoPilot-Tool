@@ -127,6 +127,7 @@ struct glBufferMark{
   int size;
   GLfloat width;
   int texture_id;
+  tool::GL_Tag_Element tag;
 };
 
 struct QOpenglDrawCell : protected QOpenGLFunctions{
@@ -198,8 +199,19 @@ public:
         m_isMouseAbled.store(isAbled);
     }
 
+    void setMouseSensitivity(int sensitivity){
+        m_MouseSensitivity = sensitivity;
+    }
+    void setMouseWheelSensitivity(int sensitivity){
+        m_WheelSensetivity = sensitivity;
+    }
+
     void setKeyboardAbled(bool isAbled){
         m_isKeyboardAbled.store(isAbled);
+    }
+
+    void setKeyBoardSensitivity(int sensitivity){
+        m_keyBoardSensitivity = sensitivity;
     }
 
     void setShowText(bool isshow){
@@ -243,6 +255,9 @@ private:
   std::atomic_bool         m_isShowImage;
   QPoint m_lastPos;
   GLData m_data;
+  int m_MouseSensitivity;
+  int m_WheelSensetivity;
+  int m_keyBoardSensitivity;
 
   Lib3dsFile  * m_p3dsFile;
   char        * m_p3dsCameraName;

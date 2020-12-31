@@ -63,10 +63,12 @@ void QOptionPropertyBrowser::Init(){
     m_boolManager   = new QtBoolPropertyManager();
     m_enumManager   = new QtEnumPropertyManager();
     m_intManager    = new QtIntPropertyManager();
+    m_intManager_slider = new QtIntPropertyManager();
     m_doubleManager = new QtDoublePropertyManager();
 
     m_checkBoxFactory = new QtCheckBoxFactory();
     m_spinBoxFactory  = new QtSpinBoxFactory();
+    m_sliderFactory   = new QtSliderFactory();
     m_lineEditFactory = new QtLineEditFactory();
     m_comboBoxFactory = new QtEnumEditorFactory();
     m_doubleSpinBoxFactory = new QtDoubleSpinBoxFactory();
@@ -75,6 +77,7 @@ void QOptionPropertyBrowser::Init(){
     QtAbstractPropertyBrowser * propertyEditor = this;
     propertyEditor->setFactoryForManager(m_boolManager, m_checkBoxFactory);
     propertyEditor->setFactoryForManager(m_intManager, m_spinBoxFactory);
+    propertyEditor->setFactoryForManager(m_intManager_slider, m_sliderFactory);
     propertyEditor->setFactoryForManager(m_stringManager, m_lineEditFactory);
     propertyEditor->setFactoryForManager(m_enumManager, m_comboBoxFactory);
     propertyEditor->setFactoryForManager(m_doubleManager, m_doubleSpinBoxFactory);
@@ -85,10 +88,27 @@ void QOptionPropertyBrowser::Init(){
     InitPlayerProperty();
 }
 
+void QOptionPropertyBrowser::InitSignalAndSlot(){
+    //connect(m_stringManager, SIGNAL(valueChanged(QtProperty *property, const string &val)), this, SLOT(OnPlayerSliderMoved(int)));
+    connect(m_stringManager, SIGNAL(valueChanged(QtProperty *, QString)), this, SLOT(OnStringChanged(QtProperty *, QString)));
+    connect(m_boolManager, SIGNAL(valueChanged(QtProperty *, bool)), this, SLOT(OnBoolChanged(QtProperty *, bool)));
+    connect(m_enumManager, SIGNAL(valueChanged(QtProperty *, int)), this, SLOT(OnEnumChanged(QtProperty *, int)));
+    connect(m_intManager, SIGNAL(valueChanged(QtProperty *, int)), this, SLOT(OnIntChanged(QtProperty *, int)));
+    connect(m_intManager_slider, SIGNAL(valueChanged(QtProperty *, int)), this, SLOT(OnIntSliderChanged(QtProperty *, int)));
+    connect(m_doubleManager, SIGNAL(valueChanged(QtProperty *, double)), this, SLOT(OnDoubleChanged(QtProperty *, double)));
+}
+
 void QOptionPropertyBrowser::InitCommonProperty(){
     QtProperty * commonProperty = m_groupManager->addProperty("Common");
     commonProperty->setPropertyId(QString("CommonSetting"));
     m_Property_Map[std::string("CommonSetting")] = commonProperty;
+
+    QtProperty * themeItem = m_enumManager->addProperty("Theme");
+    themeItem->setPropertyId(QString("Theme"));
+    QStringList ThemeNames{"Simple","Science Fiction","Girl","Natural","Laker","CyberPunk"};
+    m_enumManager->setEnumNames(themeItem, ThemeNames);
+    commonProperty->addSubProperty(themeItem);
+    m_Property_Map[std::string("Theme")] = themeItem;
 
     QtProperty * viewSettingItem = m_stringManager->addProperty("视角设置");
     viewSettingItem->setPropertyId(QString("ViewSetting"));
@@ -115,11 +135,32 @@ void QOptionPropertyBrowser::InitCommonProperty(){
     m_boolManager->setValue(enableMouseCtrItem,true);
     m_Property_Map[std::string("MouseControl")] = enableMouseCtrItem;
 
+    QtProperty * mouseSensitivityItem = m_intManager_slider->addProperty("Mouse Sensitivity");
+    mouseSensitivityItem->setPropertyId(QString("MouseSensitivity"));
+    commonProperty->addSubProperty(mouseSensitivityItem);
+    m_intManager_slider->setRange(mouseSensitivityItem, 1, 15);
+    m_intManager_slider->setValue(mouseSensitivityItem,5);
+    m_Property_Map[std::string("MouseSensitivity")] = mouseSensitivityItem;
+
+    QtProperty * wheelSensitivityItem = m_intManager_slider->addProperty("Wheel Sensitivity");
+    wheelSensitivityItem->setPropertyId(QString("WheelSensitivity"));
+    commonProperty->addSubProperty(wheelSensitivityItem);
+    m_intManager_slider->setRange(wheelSensitivityItem, 1, 10);
+    m_intManager_slider->setValue(wheelSensitivityItem,5);
+    m_Property_Map[std::string("WheelSensitivity")] = wheelSensitivityItem;
+
     QtProperty * keyBoardCtrItem = m_boolManager->addProperty("Key board Control");
     keyBoardCtrItem->setPropertyId(QString("KeyboardControl"));
     commonProperty->addSubProperty(keyBoardCtrItem);
     m_boolManager->setValue(keyBoardCtrItem,true);
     m_Property_Map[std::string("KeyboardControl")] = keyBoardCtrItem;
+
+    QtProperty * keyBoardSensitivityItem = m_intManager_slider->addProperty("Key Board Sensitivity");
+    keyBoardSensitivityItem->setPropertyId(QString("KeyBoardSensitivity"));
+    commonProperty->addSubProperty(keyBoardSensitivityItem);
+    m_intManager_slider->setRange(keyBoardSensitivityItem, 1, 20);
+    m_intManager_slider->setValue(keyBoardSensitivityItem,5);
+    m_Property_Map[std::string("KeyBoardSensitivity")] = keyBoardSensitivityItem;
 
     this->addProperty(commonProperty);
     QtBrowserItem * item = this->topLevelItem(commonProperty);
@@ -231,15 +272,6 @@ void QOptionPropertyBrowser::InitPlayerProperty(){
     this->setBackgroundColor(item,QColor(100,149,237));
 }
 
-void QOptionPropertyBrowser::InitSignalAndSlot(){
-    //connect(m_stringManager, SIGNAL(valueChanged(QtProperty *property, const string &val)), this, SLOT(OnPlayerSliderMoved(int)));
-    connect(m_stringManager, SIGNAL(valueChanged(QtProperty *, QString)), this, SLOT(OnStringChanged(QtProperty *, QString)));
-    connect(m_boolManager, SIGNAL(valueChanged(QtProperty *, bool)), this, SLOT(OnBoolChanged(QtProperty *, bool)));
-    connect(m_enumManager, SIGNAL(valueChanged(QtProperty *, int)), this, SLOT(OnEnumChanged(QtProperty *, int)));
-    connect(m_intManager, SIGNAL(valueChanged(QtProperty *, int)), this, SLOT(OnIntChanged(QtProperty *, int)));
-    connect(m_doubleManager, SIGNAL(valueChanged(QtProperty *, double)), this, SLOT(OnDoubleChanged(QtProperty *, double)));
-}
-
 void QOptionPropertyBrowser::OnStringChanged(QtProperty *property, QString val){
 
 }
@@ -262,7 +294,9 @@ void QOptionPropertyBrowser::OnEnumChanged(QtProperty *property, int val){
     PropertyOperation      propOpera;
     PropertyOperationValue propOperaValue;
     propOperaValue.value_enum = val;
-    if(property->propertyId() == QString("View")){
+    if(property->propertyId() == QString("Theme")){
+        propOpera = THEME_CHANGE;
+    }else if(property->propertyId() == QString("View")){
         propOpera = VIEW_CHANGE;
     }else if(property->propertyId() == QString("LogConstrainType")){
         propOpera = CHANGE_LOG_CONS_TYPE;
@@ -326,6 +360,22 @@ void QOptionPropertyBrowser::OnEnumChanged(QtProperty *property, int val){
 
 void QOptionPropertyBrowser::OnIntChanged(QtProperty *property, int val){
 
+}
+
+void QOptionPropertyBrowser::OnIntSliderChanged(QtProperty * property, int val){
+    PropertyOperation      propOpera;
+    PropertyOperationValue propOperaValue;
+    propOperaValue.value_int = val;
+    if(property->propertyId() == QString("MouseSensitivity")){
+        propOpera = MOUSE_SENSITIVITY_CHANGE;
+    }else if(property->propertyId() == QString("WheelSensitivity")){
+        propOpera = MOUSEWHEEL_SENSITIVITY_CHANGE;
+    }else if(property->propertyId() == QString("KeyBoardSensitivity")){
+        propOpera = KEYBOARD_SENSITIVITY_CHANGE;
+    }else{
+        /* nothing*/
+    }
+    emit updatePropertyOperation(propOpera,propOperaValue);
 }
 
 void QOptionPropertyBrowser::OnDoubleChanged(QtProperty *property, double val){
