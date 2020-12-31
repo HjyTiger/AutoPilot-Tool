@@ -57,9 +57,9 @@
 
 // grid config defaults
 GridConfig::GridConfig()
-  : minX(-3000), maxX(3000),
-    minY(-3000), maxY(3000),
-    step(100),
+  : minX(-5000), maxX(5000),
+    minY(-5000), maxY(5000),
+    step(300),
     color(QVector3D(0.5f, 0.5f, 0.5f))
 {}
 
@@ -877,18 +877,31 @@ void QViewerOpenGLWidget::drawInformations(QPainter & painter){
         /* draw text*/
         if(m_isShowText.load()){
           /* draw gl tag*/
-          // std::vector<glBufferMark> & bufMark_Vec = drawIter->second.gl_bufferMarks;
-          // for(int i = 0;i < bufMark_Vec.size();i++){
-          //   glBufferMark & bufmark = bufMark_Vec[i];
-          //   tool::GL_Tag_Element & gl_tag = bufmark.tag;
-          //   QVector4D gl_Position = m_camera->toMatrix()*QVector4D(gl_tag.left_bottom_pos,1.0);
-          //   painter.setPen(gl_tag.color);
-          //   for(int j = 0;j < gl_tag.str_tags.size();j++){
-          //     int loc_x = -gl_Position.x()/gl_Position.w() * this->frameGeometry().width();
-          //     int loc_y = -gl_Position.y()/gl_Position.w() * this->frameGeometry().height();
-          //     painter.drawText(loc_x,loc_y,gl_tag.str_tags[j]);
-          //   }
-          // }
+          std::vector<glBufferMark> & bufMark_Vec = drawIter->second.gl_bufferMarks;
+          for(int i = 0;i < bufMark_Vec.size();i++){
+            glBufferMark & bufmark = bufMark_Vec[i];
+            tool::GL_Tag_Element & gl_tag = bufmark.tag;
+            QVector4D gl_Position = m_camera->toMatrix()*QVector4D(gl_tag.left_bottom_pos,1.0);
+            if(gl_Position.z() > 0.0){
+              int text_width = static_cast<int>(15000.0/gl_Position.z());
+              int nPixel = static_cast<float>(text_width) * 1.5;
+              if(text_width == 0){
+                text_width = 1;
+              }else{}
+              painter.setPen(gl_tag.color);
+              painter.setFont(QFont(QString("Times New Roman"), text_width));
+              int nStrTag = gl_tag.str_tags.size();
+              int lb_loc_x = this->frameGeometry().width() * (1.0 + gl_Position.x()/gl_Position.w())/2.0; //lb means left bottom
+              int lb_loc_y = this->frameGeometry().height() * (0.5 - gl_Position.y()/gl_Position.w()/2.0);
+              int lu_loc_y = lb_loc_y - (nStrTag - 1)*nPixel;
+              for(int j = 0;j < nStrTag;j++){
+                int loc_y = lu_loc_y + j * nPixel;
+                painter.drawText(lb_loc_x,loc_y,gl_tag.str_tags[j]);
+              }
+            }else{
+              /* do nothing*/
+            }
+          }
           /* draw screen text*/
           std::vector<tool::GL_Text_Element> & glText_Vec = drawIter->second.text_data;
           for(int i = 0;i < glText_Vec.size();i++){
