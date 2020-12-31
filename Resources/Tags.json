@@ -1,0 +1,32 @@
+{
+    "tags": [
+        {
+            "name": "some problem 1",
+            "detail": "....... "
+        },
+
+        {
+            "name": "some problem 2",
+            "detail": "........ "
+        },
+
+        {
+            "name": "some problem 3",
+            "detail": "......."
+        }
+    ],
+
+    "records": [
+        {
+            "name": "record1"
+        },
+
+        {
+            "name": "record2"
+        },
+
+        {
+            "name": "record3"
+        }
+    ]
+}
