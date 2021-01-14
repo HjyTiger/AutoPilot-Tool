@@ -52,9 +52,7 @@
 #include <QAbstractButton> 
 #include <string>
 #include <vector>
-#include "json/json.h"
-
-using json = 
+#include "nlohmann/json.hpp"
 
 class SelectTag{
 public:
@@ -66,6 +64,18 @@ public:
     std::string  name;
     std::string  detail;
 };
+
+class TagsJson{
+public:
+    TagsJson(){}
+    ~TagsJson(){}
+public:
+    std::vector<std::string> m_records;
+    std::vector<SelectTag>   m_tags;
+};
+
+void to_json(nlohmann::json & js, const TagsJson & tags_json);
+void from_json(const nlohmann::json & js, TagsJson & tags_json);
 
 namespace Ui {
 class TagSelectDialog;
@@ -86,9 +96,8 @@ public:
 private:
     Ui::TagSelectDialog *ui;
 private:
-    Json::Reader             jsonReader;
-    std::vector<std::string> m_records;
-    std::vector<SelectTag>   m_tags;
+    nlohmann::json           m_json;
+    TagsJson                 m_tags_json;
 signals:
     void recordName(QString name);
     void tagNameAndDetail(QString name,QString detail);

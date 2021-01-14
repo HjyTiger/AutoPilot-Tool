@@ -55,7 +55,7 @@ const QVector3D Camera::LocalPosition(0,0,5000);
 
 const QVector3D BirdViewForward(0, -1, 0);
 const QVector3D BirdViewUp(0, 0,  1);
-const QVector3D BirdViewPosition(0,0,5000);
+const QVector3D BirdViewPosition(1500,0,4000);
 
 const QVector3D FirstPersonForward(0,0 , 1);
 const QVector3D FirstPersonUp(0, 1, 0);
@@ -102,13 +102,18 @@ CameraConfig::CameraConfig()
 {}
 
 Camera::Camera()
-  : m_config(),
+  : config_(nullptr),
+    m_config(),
     aspectRatio(1),
     distance(0),
     m_dirty(true)
 {
   setConfig(m_config);
   m_translation = LocalPosition;
+}
+
+Camera::~Camera(){
+  save_Config();
 }
 
 
@@ -141,6 +146,36 @@ void Camera::rotate(const QQuaternion &dr) {
     QVector3D delta_new = dr.rotatedVector(delta_old);
     m_translation += delta_old - delta_new;
   }
+}
+
+void Camera::set_Config(tool::Camera_Config * camera_config){
+  if(camera_config != nullptr){
+    config_ = camera_config;
+    QVector3D translation(config_->loc_x,config_->loc_y,config_->loc_z);
+    setTranslation(translation);
+    QQuaternion rotation(config_->rotation_qua_scale,
+                         config_->rotation_qua_x,
+                         config_->rotation_qua_y,
+                         config_->rotation_qua_z);
+    m_rotation = rotation;
+    //setRotation(rotation);
+  }else{
+    /* do nothing*/
+  }
+}
+
+void Camera::save_Config(){
+  if(config_ != nullptr){
+    config_->loc_x = m_translation.x();
+    config_->loc_y = m_translation.y();
+    config_->loc_z = m_translation.z();
+    config_->rotation_qua_scale = m_rotation.scalar();
+    config_->rotation_qua_x = m_rotation.x();
+    config_->rotation_qua_y = m_rotation.y();
+    config_->rotation_qua_z = m_rotation.z();
+  }else{
+    /* do nothing*/
+  }  
 }
 
 // Setters
@@ -296,10 +331,14 @@ void Camera::updateFrustum() {
 }
 
 void Camera::reset() {
-  setTranslation(m_config.initialTranslation);
-  setTarget(0, 100, 0);
+  if(config_ == nullptr){
+    setTranslation(m_config.initialTranslation);
+    setTarget(0, 100, 0);
 
-  m_rotation = m_worldToLocal.conjugated();
+    m_rotation = m_worldToLocal.conjugated();
+  }else{
+    set_Config(config_);
+  }
 }
 
 

@@ -50,6 +50,7 @@
 #include <QVector3D>
 #include <QQuaternion>
 #include <QMatrix4x4>
+#include "Model/Model_Config.h"
 
 
 enum class CameraMode
@@ -100,6 +101,7 @@ class Camera : public QObject
   Q_OBJECT
 public:
   Camera();
+  ~Camera();
 
   void setConfig(const CameraConfig &config);
 
@@ -119,6 +121,11 @@ public slots:
   void rotate(float angle, float ax, float ay, float az);
 
 public:
+  void set_Config(tool::Camera_Config * gl_config);
+  void save_Config();
+  tool::Camera_Config * get_Config(){
+      return config_;
+  }
   // Setters
   void setTranslation(const QVector3D &t);
   void setTranslation(float x, float y, float z);
@@ -177,7 +184,7 @@ signals:
 
 private:
   void updateFrustum();
-
+  tool::Camera_Config * config_;
   CameraConfig m_config;
   QQuaternion m_worldToLocal;
 

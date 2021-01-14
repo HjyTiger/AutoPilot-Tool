@@ -121,7 +121,7 @@ protected:
 
 public:
     explicit QSpeedSlider(QWidget *parent = 0);
-    ~QSpeedSlider();
+    virtual ~QSpeedSlider();
 
     void SetMultiplyPower(const short& val);
     void SetSpeedValue(const float & fval);

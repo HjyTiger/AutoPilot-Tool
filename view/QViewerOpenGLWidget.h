@@ -80,6 +80,8 @@
 
 #include "gldata.h"
 #include "view/model.h"
+#include "Model/Model_Config.h"
+#include "Model/Model_Constants.h"
 #include "Model/Model_Type.h"
 #include "Model/Model_DataManager.h"
 
@@ -145,7 +147,7 @@ public:
     sp_EBO->create();
     sp_VBO->setUsagePattern(QOpenGLBuffer::DynamicDraw);
   }
-  ~QOpenglDrawCell(){}
+  virtual ~QOpenglDrawCell(){}
 public:
   void generate(tool::GL_Data & gldata);
   bool uploadGLdata();
@@ -173,7 +175,7 @@ class QViewerOpenGLWidget : public QOpenGLWidget, protected QOpenGLFunctions
     Q_OBJECT
 public:
     explicit QViewerOpenGLWidget(QWidget *parent = nullptr);
-    ~QViewerOpenGLWidget();
+    virtual ~QViewerOpenGLWidget();
 public:
     bool connectDataManager(tool::DataManager * p_dataManager);
     bool disconnectDataManager();
@@ -191,31 +193,53 @@ public:
 
     void setCameraView(int view);
 
+    void set_Config(tool::ViewerGLWidget_Config * gl_config);
+    void save_Config();
+    tool::ViewerGLWidget_Config * get_Config(){
+        return config_;
+    }
+
     void setUpdateAbled(bool isAbled){
-      m_isUpdateAbled.store(isAbled);
+      is_update_enable_.store(isAbled);
     }
 
     void setMouseAbled(bool isAbled){
-        m_isMouseAbled.store(isAbled);
+        is_mouse_enable_.store(isAbled);
     }
 
     void setMouseSensitivity(int sensitivity){
-        m_MouseSensitivity = sensitivity;
+        mouse_sensitivity_ = sensitivity;
     }
     void setMouseWheelSensitivity(int sensitivity){
-        m_WheelSensetivity = sensitivity;
+        wheel_sensetivity_ = sensitivity;
     }
 
     void setKeyboardAbled(bool isAbled){
-        m_isKeyboardAbled.store(isAbled);
+        is_keyboard_enable_.store(isAbled);
     }
 
     void setKeyBoardSensitivity(int sensitivity){
-        m_keyBoardSensitivity = sensitivity;
+        keyboard_sensitivity_ = sensitivity;
     }
 
-    void setShowText(bool isshow){
-      m_isShowText.store(isshow);
+    void setDrawGrid(bool is_show){
+        is_draw_grid_ = is_show;
+    }
+
+    void setDrawMarkline(bool is_show){
+        is_draw_markline_ = is_show;
+    }
+
+    void setDrawAxes(bool is_show){
+        is_draw_axes_ = is_show;
+    }
+    
+    void setShowText(bool is_show){
+        is_show_text_.store(is_show);
+    }
+
+    void setShowImage(bool is_show){
+        is_show_image_.store(is_show);
     }
 protected:
     void initializeGL() override;
@@ -245,19 +269,20 @@ public slots:
     void OnUpdateInfoGLdata(QString infoName);
 
 private:
+  tool::ViewerGLWidget_Config * config_;
   tool::DataManager     *  m_dataManager;
   std::atomic_bool         m_isDataManagerConnected;
   std::atomic_bool         m_isInfoDataGLInit;
-  std::atomic_bool         m_isUpdateAbled;
-  std::atomic_bool         m_isMouseAbled;
-  std::atomic_bool         m_isKeyboardAbled;
-  std::atomic_bool         m_isShowText;
-  std::atomic_bool         m_isShowImage;
+  std::atomic_bool         is_update_enable_;
+  std::atomic_bool         is_mouse_enable_;
+  std::atomic_bool         is_keyboard_enable_;
+  std::atomic_bool         is_show_text_;
+  std::atomic_bool         is_show_image_;
   QPoint m_lastPos;
   GLData m_data;
-  int m_MouseSensitivity;
-  int m_WheelSensetivity;
-  int m_keyBoardSensitivity;
+  int mouse_sensitivity_;
+  int wheel_sensetivity_;
+  int keyboard_sensitivity_;
 
   Lib3dsFile  * m_p3dsFile;
   char        * m_p3dsCameraName;
@@ -288,15 +313,15 @@ private:
   std::map<std::string,QOpenglDrawCell> m_info_drawCell;
   QPainter                              m_text_painter;
 
-  bool       m_drawGrid;
+  bool       is_draw_grid_;
   int        m_gridVertexIdx;
   GridConfig m_gridConfig;
 
-  bool       m_drawMarkLine;
+  bool       is_draw_markline_;
   int        m_markLineVertexIdx;
   MarkLineConfig m_markLine;
 
-  bool       m_drawAxes;
+  bool       is_draw_axes_;
   int        m_axesVertexIdx;
   AxesConfig m_axesConfig;
 

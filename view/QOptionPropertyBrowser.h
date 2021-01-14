@@ -46,6 +46,7 @@
 
 #pragma once
 
+#include "Model/Model_Config.h"
 #include <string>
 #include <atomic>
 #include <QObject>
@@ -109,14 +110,21 @@ class QOptionPropertyBrowser: public QtTreePropertyBrowser
     Q_OBJECT
 public:
     explicit QOptionPropertyBrowser(QWidget *parent = 0);
-    ~QOptionPropertyBrowser();
+    virtual ~QOptionPropertyBrowser();
 public:
     void Init();
     void InitSignalAndSlot();
     void InitCommonProperty();
     void InitLoggerProperty();
     void InitPlayerProperty();
+
+    void set_Config(tool::Option_Config * option_config);
+    void save_Config();
+    tool::Option_Config * get_Config(){
+        return config_;
+    }
 private:
+    tool::Option_Config *      config_;
     QtStringPropertyManager *  m_stringManager;
     QtBoolPropertyManager *    m_boolManager;
     QtEnumPropertyManager *    m_enumManager;
@@ -143,7 +151,7 @@ public slots:
     void OnEnumChanged(QtProperty * property, int val);
     void OnIntChanged(QtProperty * property, int val);
     void OnIntSliderChanged(QtProperty * property, int val);
-    void OnDoubleChanged(QtProperty *property, double val);
+    void OnDoubleChanged(QtProperty * property, double val);
     
 };
 

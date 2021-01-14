@@ -10,7 +10,7 @@
 [![LinkedIn][linkedin-shield]][linkedin-url]
 
 # Statement
-由于工具源码在网上公开，除使用部分开源项目代码外，其余代码均来自我个人，工具本身不包含公司的知识产权，所有与公司有关的内容均从软件包中移除，软件发布遵循Apache协议，任何人均可下载进行修改使用，如使用过程中出现任何问题，本人均不负任何法律责任，如需提供修改及维护，可与本人联系。
+由于工具源码在网上公开，除使用部分开源项目代码外，其余代码均来自我个人，工具本身不包含公司的知识产权，所有与公司有关的内容均从软件包中移除，软件发布遵循Apache协议，任何人均可下载进行修改使用，如使用过程中出现任何问题，本人均不负任何法律责任。
 
 <!-- PROJECT LOGO -->
 <br />
@@ -102,7 +102,7 @@ To get a local copy up and running follow these simple steps.
 
 ### Prerequisites
 
-Qt5.10 , Opengl , OpenCV ,protobuf,lib3ds,assimp,lcm,jsoncpp
+Qt5.10 , Opengl , OpenCV , protobuf , lib3ds , assimp , lcm , nlohmann/json
 
 在发布的版本中包含了部分依赖库的源代码，均来自github，没有包含的部分需要自行前往下载。
 

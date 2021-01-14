@@ -48,12 +48,19 @@
 #include "Model/Model_Common.h"
 #include "view/QChannelTableWidget.h"
 
-QChanneltableWidget::QChanneltableWidget(QWidget *parent )
+QChanneltableWidget::QChanneltableWidget(QWidget *parent ):
+  config_(nullptr)
 {}
 
 QChanneltableWidget::~QChanneltableWidget()
 {
+    delete config_;
+}
 
+void QChanneltableWidget::set_Config(tool::ChannelWindow_Config * chnl_win_config){
+    if(chnl_win_config != nullptr){
+        config_ = chnl_win_config;
+    }else{/* do nothing*/}
 }
 
 bool QChanneltableWidget::connectDataManager(tool::DataManager * p_dataManager){

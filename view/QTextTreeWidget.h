@@ -66,7 +66,7 @@ class QTextTreeWidget: public QTreeWidget
     Q_OBJECT
 public:
     explicit QTextTreeWidget(QWidget *parent = 0);
-    ~QTextTreeWidget();
+    virtual ~QTextTreeWidget();
 public:
     void Init();
     bool connectDataManager(tool::DataManager * p_dataManager);

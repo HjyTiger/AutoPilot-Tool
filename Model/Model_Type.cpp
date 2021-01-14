@@ -44,91 +44,88 @@
 * Version: 1.0.0                                                             **
 ******************************************************************************/
 
-#pragma once
+#include "Model/Model_Type.h"
 
-#include <map>
-#include <string>
-#include <QObject>
-#include <QTreeWidget>
-#include <QKeyEvent>
+namespace tool{
 
-#include "Model/Model_Config.h"
-#include "Model/Model_DataManager.h"
+int ValuePool::getAllValueName(std::vector<std::string> & valueNames){
+    for(thread_safe::map<QString,double>::iterator valIter = m_StrVal_Map.begin();
+        valIter != m_StrVal_Map.end();
+        valIter++){
+            valueNames.push_back(valIter->first.toStdString());
+    }
+    return valueNames.size();
+}
+int ValuePool::getAllValueName(std::vector<QString> & valueNames){
+    for(thread_safe::map<QString,double>::iterator valIter = m_StrVal_Map.begin();
+        valIter != m_StrVal_Map.end();
+        valIter++){
+            valueNames.push_back(valIter->first);
+    }
+    return valueNames.size();
+}
 
-class QEvent;
-class QWidget;
+int ValuePool::getAllSubscribeName(std::vector<std::string> & subNames){
+    subNames.clear();
+    for(thread_safe::map<QString,int>::iterator iter = m_Subscribe_Map.begin();
+        iter != m_Subscribe_Map.end();
+        iter++){
+            subNames.push_back(iter->first.toStdString());
+    }
+    return subNames.size();
+}
+int ValuePool::getAllSubscribeName(std::vector<QString> & subNames){
+    subNames.clear();
+    for(thread_safe::map<QString,int>::iterator iter = m_Subscribe_Map.begin();
+        iter != m_Subscribe_Map.end();
+        iter++){
+            subNames.push_back(iter->first);
+    }
+    return subNames.size();
+}
 
-class groupItemInfo{
-public:
-    int resetInfoIndex(){
-        int i = 0;
-        for(std::map<std::string,int>::iterator iter = m_info_index.begin();
-            iter != m_info_index.end();
-            iter++){
-            iter->second = i;
-            m_index_info[i] = iter->first;
-            i++;
+void ValuePool::addSubscribe(const std::string & valName){
+    addSubscribe(QString::fromStdString(valName));
+}
+void ValuePool::addSubscribe(const QString & valName){
+    thread_safe::map<QString,int>::iterator subIter = m_Subscribe_Map.find(valName);
+    if(subIter != m_Subscribe_Map.end()){
+        if(subIter->second >= 0){
+            subIter->second++;
+        }else{
+            subIter->second = 1;
         }
-        return i;
+        
+    }else{
+        m_Subscribe_Map.insert(std::pair<QString,int>(valName,1));
     }
-public:
-    int                        index;
-    std::map<std::string,int>  m_info_index;
-    std::map<int,std::string>  m_index_info;
-};
-
-
-
-///
-/// \brief The QTagTableWidget class
-///
-
-class QChannelTreeWidget: public QTreeWidget
-{
-    Q_OBJECT
-public:
-    enum{HEADER_ITEM,
-         GROUP_ITEM,
-         INFO_ITEM};
-public:
-    explicit QChannelTreeWidget(QWidget *parent = 0);
-    virtual ~QChannelTreeWidget();
-public:
-    void Init();
-    void set_Config(tool::ChannelWindow_Config * chnl_win_config){
-        config_ = chnl_win_config;
+}
+void ValuePool::addSubscribe(std::vector<std::string> & valNames){
+    for(int i = 0;i < valNames.size();i++){
+        const std::string & valname = valNames[i];
+        addSubscribe(QString::fromStdString(valname));
     }
-    tool::ChannelWindow_Config * get_Config(){
-        return config_;
+}
+void ValuePool::addSubscribe(std::vector<QString> & valNames){
+    for(int i = 0;i < valNames.size();i++){
+        const QString & valname = valNames[i];
+        addSubscribe(valname);
     }
-    bool connectDataManager(tool::DataManager * p_dataManager);
-    bool disconnectDataManager();
-    std::string getItemName(QTreeWidgetItem * pItem);
-private:
-    void showGroupInfo(const std::string & groupName,
-                       const std::string & infoName);
-    void showGroupInfo(QTreeWidgetItem * groupItem,
-                       tool::GroupInfo & groupInfo);
-    void showMsgInfo(QTreeWidgetItem   * infoItem,
-                     tool::Information & info);
-    QTreeWidgetItem * addGroupItem(const std::string & name);
-    int resetGroupIndex();
-private:
-    tool::ChannelWindow_Config * config_;
-    tool::DataManager       *    m_dataManager;
-    std::atomic_bool             m_isDataManagerConnected;
+}
 
-    std::map<std::string,groupItemInfo> m_group_Map;
-    //std::map<int,std::string>           m_index_group_Map;
-    std::map<QTreeWidgetItem *,std::string>  m_groupItem_name_Map;
+void ValuePool::removeSubscribe(const std::string & valName){
+    removeSubscribe(QString::fromStdString(valName));
+}
+void ValuePool::removeSubscribe(const QString & valName){
+    thread_safe::map<QString,int>::iterator subIter = m_Subscribe_Map.find(valName);
+    if(subIter == m_Subscribe_Map.end()){
+        /* do nothing*/
+    }else{
+        subIter->second--;
+        if(subIter->second <= 0){
+            m_Subscribe_Map.erase(subIter);
+        }
+    }
+}
 
-    std::map<QTreeWidgetItem *,QTreeWidgetItem *>  m_infoItem_groupItem_Map;
-    
-
-signals:
-    void operationInformation(QString msgInfo,QColor strcolor);
-public slots:
-    void OnUpdateChannelTreeWidget(QString channel);
-    void OnUpdateChannelTreeSelected(QString channelName);
-};
-
+} // namespace tool

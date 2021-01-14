@@ -225,28 +225,30 @@ bool QOpenglDrawCell::draw(){
 
 QViewerOpenGLWidget::QViewerOpenGLWidget(QWidget *parent)
   : QOpenGLWidget(parent),
+    config_(nullptr),
     m_isDataManagerConnected(false),
     m_isInfoDataGLInit(false),
-    m_isUpdateAbled(true),
-    m_isMouseAbled(true),
-    m_isKeyboardAbled(true),
-    m_MouseSensitivity(5),
-    m_WheelSensetivity(5),
-    m_keyBoardSensitivity(5),
-    m_drawGrid(true),
+    is_update_enable_(true),
+    is_mouse_enable_(true),
+    is_keyboard_enable_(true),
+    mouse_sensitivity_(5),
+    wheel_sensetivity_(5),
+    keyboard_sensitivity_(5),
+    is_draw_grid_(true),
     m_gridVertexIdx(-1),
     m_gridConfig(),
     m_markLine(),
-    m_drawMarkLine(false),
-    m_drawAxes(true),
-    m_isShowText(true),
-    m_isShowImage(true),
+    is_draw_markline_(false),
+    is_draw_axes_(true),
+    is_show_text_(true),
+    is_show_image_(true),
     m_axesVertexIdx(-1),
     m_axesConfig(),
     m_program(nullptr),
     m_program_model(nullptr),
     m_camera(new Camera)
 {
+  setAttribute(Qt::WA_DeleteOnClose);
   setFocusPolicy(Qt::StrongFocus);
   QSurfaceFormat format;
   format.setDepthBufferSize(24);
@@ -326,7 +328,7 @@ void QViewerOpenGLWidget::setData(const GLData &data) {
   m_axesVertexIdx = -1;
 
   setupGL();
-  if(m_isUpdateAbled.load()){
+  if(is_update_enable_.load()){
     update();
   }else{
     /* do nothing*/
@@ -336,7 +338,7 @@ void QViewerOpenGLWidget::setData(const GLData &data) {
 void QViewerOpenGLWidget::setGridConfig(const GridConfig &grid) {
   m_gridConfig = grid;
   setupGL();
-  if(m_isUpdateAbled.load()){
+  if(is_update_enable_.load()){
     update();
   }else{
     /* do nothing*/
@@ -346,7 +348,7 @@ void QViewerOpenGLWidget::setGridConfig(const GridConfig &grid) {
 void QViewerOpenGLWidget::setMarkLineConfig(const MarkLineConfig &markline){
   m_markLine = markline;
   setupGL();
-  if(m_isUpdateAbled.load()){
+  if(is_update_enable_.load()){
     update();
   }else{
     /* do nothing*/
@@ -356,7 +358,7 @@ void QViewerOpenGLWidget::setMarkLineConfig(const MarkLineConfig &markline){
 void QViewerOpenGLWidget::setAxesConfig(const AxesConfig &axes) {
   m_axesConfig = axes;
   setupGL();
-  if(m_isUpdateAbled.load()){
+  if(is_update_enable_.load()){
     update();
   }else{
     /* do nothing*/
@@ -365,11 +367,48 @@ void QViewerOpenGLWidget::setAxesConfig(const AxesConfig &axes) {
 
 void QViewerOpenGLWidget::setCameraView(int view){
   m_camera->setCameraLocOrient(view);
-  if(m_isUpdateAbled.load()){
+  if(is_update_enable_.load()){
     update();
   }else{
     /* do nothing*/
   }
+}
+
+void QViewerOpenGLWidget::set_Config(tool::ViewerGLWidget_Config * gl_config){
+    if(gl_config != nullptr){
+        config_ = gl_config;
+        is_mouse_enable_.store(config_->enable_mouse_ctrl_);
+        is_keyboard_enable_.store(config_->enable_keyboard_ctrl_);
+        is_draw_grid_     = config_->is_draw_grid_;
+        is_draw_markline_ = config_->is_draw_markline_;
+        is_draw_axes_     = config_->is_draw_axes_;
+        is_show_text_.store(config_->is_show_text_);
+        is_show_image_.store(config_->is_show_image_);
+        mouse_sensitivity_    = config_->mouse_sensitivity_;
+        wheel_sensetivity_    = config_->wheel_sensitivity_;
+        keyboard_sensitivity_ = config_->keyboard_sensitivity_;
+        m_camera->set_Config(config_->camera_config_);
+    }else{
+        /* do nothing*/
+    }
+}
+
+void QViewerOpenGLWidget::save_Config(){
+    if(config_ != nullptr){
+      config_->enable_mouse_ctrl_    = is_mouse_enable_;
+      config_->enable_keyboard_ctrl_ = is_keyboard_enable_;
+      config_->is_draw_grid_         = is_draw_grid_;
+      config_->is_draw_markline_     = is_draw_markline_;
+      config_->is_draw_axes_         = is_draw_axes_;
+      config_->is_show_text_         = is_show_text_;
+      config_->is_show_image_        = is_show_image_;
+      config_->mouse_sensitivity_    = mouse_sensitivity_;
+      config_->wheel_sensitivity_    = wheel_sensetivity_ ;
+      config_->keyboard_sensitivity_ = keyboard_sensitivity_;
+      m_camera->save_Config();
+    }else{
+        /* do nothing*/
+    }  
 }
 
 
@@ -540,7 +579,7 @@ void QViewerOpenGLWidget::initializeGL() {
   setupGL();
   m_vehicle.setUpModelAdjustMatrix();
   m_vehicle.setUp3dsModelGL(m_program_model);
-  if(m_isUpdateAbled.load()){
+  if(is_update_enable_.load()){
     update();
   }else{
     /* do nothing*/
@@ -875,7 +914,7 @@ void QViewerOpenGLWidget::drawInformations(QPainter & painter){
           /* go on*/
         }
         /* draw text*/
-        if(m_isShowText.load()){
+        if(is_show_text_.load()){
           /* draw gl tag*/
           std::vector<glBufferMark> & bufMark_Vec = drawIter->second.gl_bufferMarks;
           for(int i = 0;i < bufMark_Vec.size();i++){
@@ -914,7 +953,7 @@ void QViewerOpenGLWidget::drawInformations(QPainter & painter){
             /* do nothing*/
         }
         /* draw image*/
-        if(m_isShowImage.load()){
+        if(is_show_image_.load()){
           painter.save();
           std::vector<tool::GL_Image_Element> & glImage_Vec = drawIter->second.image_data;
           for(int i = 0;i < glImage_Vec.size();i++){
@@ -966,21 +1005,21 @@ void QViewerOpenGLWidget::DrawCoordSys(){
   glDrawArrays(GL_LINES, 0, m_gridVertexIdx);
   //m_linesVao.release();
 
-  if (m_drawGrid && m_gridVertexIdx > -1) {
+  if (is_draw_grid_ && m_gridVertexIdx > -1) {
     glLineWidth(0.5f);
     //m_linesVao.bind();
     glDrawArrays(GL_LINES, m_gridVertexIdx, m_markLineVertexIdx - m_gridVertexIdx);
     //m_linesVao.release();
   }else{/**/}
 
-  if (m_drawMarkLine && m_markLineVertexIdx > -1) {
+  if (is_draw_markline_ && m_markLineVertexIdx > -1) {
     glLineWidth(4);
     //m_linesVao.bind();
     glDrawArrays(GL_LINES, m_markLineVertexIdx, m_axesVertexIdx - m_markLineVertexIdx);
     //m_linesVao.release();
   }else{/**/} 
 
-  if (m_drawAxes && m_axesVertexIdx > -1) {
+  if (is_draw_axes_ && m_axesVertexIdx > -1) {
     glLineWidth(3);
     //m_linesVao.bind();
     glDrawArrays(GL_LINES, m_axesVertexIdx, m_data.lineVertexCount() - m_axesVertexIdx);
@@ -1074,7 +1113,7 @@ void QViewerOpenGLWidget::DrawCoordSys(){
 //           continue;
 //         }
 //       }
-//       if(m_isUpdateAbled.load()){
+//       if(is_update_enable_.load()){
 //         update();
 //       }else{
 //         /* do nothing*/
@@ -1126,38 +1165,44 @@ void QViewerOpenGLWidget::resizeGL(int w, int h) {
 }
 
 void QViewerOpenGLWidget::keyPressEvent(QKeyEvent *event) {
-  if(!m_isKeyboardAbled.load()){
+  if(!is_keyboard_enable_.load()){
     return;
   }else{
     /* go on*/
   }
   switch (event->key()) {
     case Qt::Key_W:
-      m_camera->moveForward(10.0f * m_keyBoardSensitivity);
+      m_camera->moveForward(10.0f * keyboard_sensitivity_);
       break;
     case Qt::Key_S:
-      m_camera->moveBack(10.0f * m_keyBoardSensitivity);
+      m_camera->moveBack(10.0f * keyboard_sensitivity_);
       break;
     case Qt::Key_A:
-      m_camera->moveLeft(10.0f * m_keyBoardSensitivity);
+      m_camera->moveLeft(10.0f * keyboard_sensitivity_);
       break;
     case Qt::Key_D:
-      m_camera->moveRight(10.0f * m_keyBoardSensitivity);
+      m_camera->moveRight(10.0f * keyboard_sensitivity_);
       break;
     case Qt::Key_Q:
-      m_camera->moveUp(10.0f * m_keyBoardSensitivity);
+      m_camera->moveUp(10.0f * keyboard_sensitivity_);
       break;
     case Qt::Key_E:
-      m_camera->moveDown(10.0f * m_keyBoardSensitivity);
+      m_camera->moveDown(10.0f * keyboard_sensitivity_);
       break;
     case Qt::Key_C:
-      m_drawAxes = !m_drawAxes;
+      setDrawAxes(!is_draw_axes_);
       break;
     case Qt::Key_M:
-      m_drawMarkLine = !m_drawMarkLine;
+      setDrawMarkline(!is_draw_markline_);
       break;
     case Qt::Key_G:
-      m_drawGrid = !m_drawGrid;
+      setDrawGrid(!is_draw_grid_);
+      break;
+    case Qt::Key_T:  // log current camera data
+      setShowText(!is_show_text_);
+      break;
+    case Qt::Key_I:  // log current camera data
+      setShowImage(!is_show_image_);
       break;
     case Qt::Key_0:
       m_camera->reset();
@@ -1177,26 +1222,20 @@ void QViewerOpenGLWidget::keyPressEvent(QKeyEvent *event) {
     case Qt::Key_L:  // log current camera data
       qDebug() << *m_camera;
       break;
-    case Qt::Key_T:  // log current camera data
-      m_isShowText = !m_isShowText;
-      break;
-    case Qt::Key_I:  // log current camera data
-      m_isShowImage = !m_isShowImage;
-      break;
     case Qt::Key_Left:
-      m_camera->rotate(-0.1f * m_keyBoardSensitivity, m_camera->upVector());
+      m_camera->rotate(-0.1f * keyboard_sensitivity_, m_camera->upVector());
       break;
     case Qt::Key_Right:
-      m_camera->rotate(0.1f * m_keyBoardSensitivity, m_camera->upVector());
+      m_camera->rotate(0.1f * keyboard_sensitivity_, m_camera->upVector());
       break;
     case Qt::Key_Up:
-      m_camera->rotate(0.1f * m_keyBoardSensitivity, m_camera->rightVector());
+      m_camera->rotate(0.1f * keyboard_sensitivity_, m_camera->rightVector());
       break;
     case Qt::Key_Down:
-      m_camera->rotate(-0.1f * m_keyBoardSensitivity, m_camera->rightVector());
+      m_camera->rotate(-0.1f * keyboard_sensitivity_, m_camera->rightVector());
       break;
   }
-  if(m_isUpdateAbled.load()){
+  if(is_update_enable_.load()){
     update();
   }else{
     /* do nothing*/
@@ -1205,7 +1244,7 @@ void QViewerOpenGLWidget::keyPressEvent(QKeyEvent *event) {
 
 
 void QViewerOpenGLWidget::mousePressEvent(QMouseEvent *event) {
-  if(!m_isMouseAbled.load()){
+  if(!is_mouse_enable_.load()){
     return;
   }else{
     /* go on*/
@@ -1214,7 +1253,7 @@ void QViewerOpenGLWidget::mousePressEvent(QMouseEvent *event) {
 }
 
 void QViewerOpenGLWidget::mouseMoveEvent(QMouseEvent *event) {
-  if(!m_isMouseAbled.load()){
+  if(!is_mouse_enable_.load()){
     return;
   }else{
     /* go on*/
@@ -1231,7 +1270,7 @@ void QViewerOpenGLWidget::mouseMoveEvent(QMouseEvent *event) {
 
   int upDown = m_camera->upsideDown() ? -1 : 1;
 
-  float operaValue = 0.04f * m_MouseSensitivity;
+  float operaValue = 0.04f * mouse_sensitivity_;
   if (event->buttons() & Qt::LeftButton) {
     if (m_camera->cameraMode() == CameraMode::Free) {
       m_camera->rotate(-operaValue * dx, m_camera->upVector());
@@ -1259,7 +1298,7 @@ void QViewerOpenGLWidget::mouseMoveEvent(QMouseEvent *event) {
     m_camera->translate( dx * m_camera->rightVector());
     m_camera->translate( dy * m_camera->upVector());
   }
-  if(m_isUpdateAbled.load()){
+  if(is_update_enable_.load()){
     update();
   }else{
     /* do nothing*/
@@ -1272,7 +1311,7 @@ void QViewerOpenGLWidget::wheelEvent(QWheelEvent *event) {
   if (numDeg.isNull())
     return;
 
-  float factor = 300 * m_WheelSensetivity;
+  float factor = 300 * wheel_sensetivity_;
 
   if (event->modifiers() & Qt::ShiftModifier)
     factor /= 10;
@@ -1283,7 +1322,7 @@ void QViewerOpenGLWidget::wheelEvent(QWheelEvent *event) {
   m_camera->translate(-factor * m_camera->forwardVector());
 
   event->accept();
-  if(m_isUpdateAbled.load()){
+  if(is_update_enable_.load()){
     update();
   }else{
     /* do nothing*/

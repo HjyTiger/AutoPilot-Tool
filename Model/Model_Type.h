@@ -46,6 +46,7 @@
 
 #pragma once
 #include <vector>
+#include <list>
 #include <GL/gl.h>
 #include <QObject>
 #include <QString>
@@ -58,56 +59,6 @@
 #include "ThreadSafe_STL/thread_safe_set.h"
 
 namespace tool{
-
-enum SampleMode{
-    sm_count,
-    sm_time
-};
-
-class  ValueConfig{
-public:
-    ValueConfig():
-    m_name(""),
-    m_isPlotAtBeginning(false),m_isFixPlotRange(false),
-    m_plot_range_lower(0.0),m_plot_range_upper(1.0),
-    m_color(255,0,0),
-    m_widthF(3.0),
-    m_Padding(10)
-    {}
-    ~ValueConfig(){}
-public:
-    std::string m_name;
-    bool    m_isPlotAtBeginning;
-    bool    m_isFixPlotRange;
-    double  m_plot_range_lower;
-    double  m_plot_range_upper;
-    QColor  m_color;
-    float   m_widthF;
-    int     m_Padding;
-};
-
-class Message_Config
-{
-public:
-    Message_Config():
-    infoName(""),groupName(""),
-    groupColor(255,255,255),infoColor(255,255,255),
-    m_isUpdateCommonInfo(false),
-    sampleMode(sm_time),sampleCount(0),sampleTimeInterval(0.05) //0.05 second
-    {}
-    ~Message_Config()
-    {}
-public:
-    std::string infoName;
-    std::string groupName;
-    QColor      groupColor;
-    QColor      infoColor;
-    bool        m_isUpdateCommonInfo;
-    tool::SampleMode  sampleMode;
-    int               sampleCount;
-    double            sampleTimeInterval;
-    std::map<std::string,ValueConfig> m_value_config;
-};
 
 const int GL_TEXTURE_IMAGE = 10;
 
@@ -279,7 +230,7 @@ public:
     ~Message_Parameter(){}
 public:
 public:
-    QColor                 title_color;
+    QColor title_color;
 };
 
 class ValuePool{
@@ -297,113 +248,22 @@ public:
         return !m_Subscribe_Map.empty();
     }
 
-    void setColor(QColor color){
-        m_color = color;
-    }
-    QColor color(){
-        return m_color;
-    }
+    int getAllValueName(std::vector<std::string> & valueNames);
+    int getAllValueName(std::vector<QString> & valueNames);
 
-    void setValueConfig(const std::map<std::string,ValueConfig> & value_config){
-        m_value_config = value_config;
-    }
-    std::map<std::string,ValueConfig> & getAllValueConfig(){
-        return m_value_config;
-    }
-    ValueConfig & getValueConfig(const std::string & valueName){
-        static ValueConfig normalConfig;
-        std::map<std::string,ValueConfig>::iterator valIter = m_value_config.find(valueName);
-        if(valIter != m_value_config.end()){
-            return valIter->second;
-        }else{
-            return normalConfig;
-        }
-    }
+    int getAllSubscribeName(std::vector<std::string> & subNames);
+    int getAllSubscribeName(std::vector<QString> & subNames);
 
-    int getAllValueName(std::vector<std::string> & valueNames){
-        for(thread_safe::map<QString,double>::iterator valIter = m_StrVal_Map.begin();
-            valIter != m_StrVal_Map.end();
-            valIter++){
-                valueNames.push_back(valIter->first.toStdString());
-        }
-        return valueNames.size();
-    }
-    int getAllValueName(std::vector<QString> & valueNames){
-        for(thread_safe::map<QString,double>::iterator valIter = m_StrVal_Map.begin();
-            valIter != m_StrVal_Map.end();
-            valIter++){
-                valueNames.push_back(valIter->first);
-        }
-        return valueNames.size();
-    }
+    void addSubscribe(const std::string & valName);
+    void addSubscribe(const QString & valName);
+    void addSubscribe(std::vector<std::string> & valNames);
+    void addSubscribe(std::vector<QString> & valNames);
 
-    int getAllSubscribeName(std::vector<std::string> & subNames){
-        subNames.clear();
-        for(thread_safe::map<QString,int>::iterator iter = m_Subscribe_Map.begin();
-            iter != m_Subscribe_Map.end();
-            iter++){
-                subNames.push_back(iter->first.toStdString());
-        }
-        return subNames.size();
-    }
-    int getAllSubscribeName(std::vector<QString> & subNames){
-        subNames.clear();
-        for(thread_safe::map<QString,int>::iterator iter = m_Subscribe_Map.begin();
-            iter != m_Subscribe_Map.end();
-            iter++){
-                subNames.push_back(iter->first);
-        }
-        return subNames.size();
-    }
-
-    void addSubscribe(const std::string & valName){
-        addSubscribe(QString::fromStdString(valName));
-    }
-    void addSubscribe(const QString & valName){
-        thread_safe::map<QString,int>::iterator subIter = m_Subscribe_Map.find(valName);
-        if(subIter != m_Subscribe_Map.end()){
-            if(subIter->second >= 0){
-                subIter->second++;
-            }else{
-                subIter->second = 1;
-            }
-            
-        }else{
-            m_Subscribe_Map.insert(std::pair<QString,int>(valName,1));
-        }
-    }
-    void addSubscribe(std::vector<std::string> & valNames){
-        for(int i = 0;i < valNames.size();i++){
-            const std::string & valname = valNames[i];
-            addSubscribe(QString::fromStdString(valname));
-        }
-    }
-    void addSubscribe(std::vector<QString> & valNames){
-        for(int i = 0;i < valNames.size();i++){
-            const QString & valname = valNames[i];
-            addSubscribe(valname);
-        }
-    }
-
-    void removeSubscribe(const std::string & valName){
-        removeSubscribe(QString::fromStdString(valName));
-    }
-    void removeSubscribe(const QString & valName){
-        thread_safe::map<QString,int>::iterator subIter = m_Subscribe_Map.find(valName);
-        if(subIter == m_Subscribe_Map.end()){
-            /* do nothing*/
-        }else{
-            subIter->second--;
-            if(subIter->second <= 0){
-                m_Subscribe_Map.erase(subIter);
-            }
-        }
-    }
+    void removeSubscribe(const std::string & valName);
+    void removeSubscribe(const QString & valName);
 private:
-    QColor                            m_color;
     thread_safe::map<QString,double>  m_StrVal_Map;
     thread_safe::map<QString,int>     m_Subscribe_Map;
-    std::map<std::string,ValueConfig> m_value_config;
 };
 
 } // namespace tool

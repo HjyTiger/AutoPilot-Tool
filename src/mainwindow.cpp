@@ -46,7 +46,7 @@
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-
+#include <fstream>
 #include <QFileDialog>
 #include "config/config.h"
 #include "Model/Model_Common.h"
@@ -54,21 +54,38 @@
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
-    ui(new Ui::MainWindow)
+    ui(new Ui::MainWindow),
+    config_(new tool::Tool_Config),
+    m_dataManager(nullptr),
+    m_pPlayProcess(nullptr),
+    m_pLogProcess(nullptr),
+    m_propertyBrowser(nullptr),
+    m_messageSendBrowser(nullptr),
+    m_tagSelectDialog(nullptr)
 {
     ui->setupUi(this);
 }
 
 MainWindow::~MainWindow()
 {
+    m_propertyBrowser->save_Config();
+    m_dataManager->save_Config();
+    m_pPlayProcess->save_Config();
+    m_pLogProcess->save_Config();
+    ui->openGLWidget_viewer->save_Config();
+    delete m_propertyBrowser;
+    delete m_messageSendBrowser;
+    delete m_tagSelectDialog;
+    SaveConfig();
+    delete config_;
     delete ui;
 }
 
 /* public function*/
 bool MainWindow::Init(){
-    m_iconDir = ":/icons/";
-    setWindowIcon(QIcon(":/icons/AutoPilotTool"));
-    QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
+    InitConfig();
+
+    InitWindow();
 
     InitDataManager();
 
@@ -78,10 +95,40 @@ bool MainWindow::Init(){
 
     InitializeSignalsAndSlots();
 
-    OnChangeTheme(Theme_ScienceFiction);
+    OnChangeTheme(static_cast<THEME_TYPE>(config_->window_config_->window_theme_));
     return true;
 }
+
 /* private function*/
+void MainWindow::InitConfig(){
+    std::fstream configFile("./ToolConfig.json",ios::in);
+    if(configFile){
+        nlohmann::json js;
+        configFile >> js;
+        from_json(js, *config_);
+        //*config_ = js;
+    }else{
+        config_->set_DefaultConfig();
+    }
+}
+
+void MainWindow::SaveConfig(){
+    std::fstream configFile("./ToolConfig.json",ios::out);
+    if(configFile){
+        nlohmann::json js;
+        js = *config_;
+        configFile << js.dump(4);;
+    }else{
+        /* do nothing*/
+    }
+}
+
+void MainWindow::InitWindow(){
+    m_iconDir = ":/icons/";
+    setWindowIcon(QIcon(":/icons/AutoPilotTool"));
+    QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
+}
+
 void MainWindow::InitDock(){
     InitViewerWindow();
     InitDataPlotWindow();
@@ -150,28 +197,39 @@ void MainWindow::showDock(const QList<int>& index){
 
 void MainWindow::InitViewerWindow(){
     ui->openGLWidget_viewer->Load3dsModel("./3Dmaterial/vehicle.3DS");
+    ui->openGLWidget_viewer->set_Config(config_->gl_widget_config_);
 }
 
 void MainWindow::InitDataPlotWindow(){
-    std::shared_ptr<QDataPlotWidget> sp_dataPlotWidget(new QDataPlotWidget(this));
-    sp_dataPlotWidget->connectDataManager(m_dataManager);
-    sp_dataPlotWidget->initMessagePlot();
-    m_dataPlotWindow_List.push_back(sp_dataPlotWidget);
-    ui->verticalLayout_dataPlot->addWidget(sp_dataPlotWidget.get());
+    if(!config_->plot_window_config_->plotCellConfig_list_.empty()){
+        auto & plotCellConfig_list = config_->plot_window_config_->plotCellConfig_list_;
+        for(std::list<tool::PlotCell_Config>::iterator iter = plotCellConfig_list.begin();
+            iter != plotCellConfig_list.end();
+            iter++){
+            std::shared_ptr<QDataPlotWidget> sp_dataPlotWidget(new QDataPlotWidget(this));
+            insertDataPlotCell(sp_dataPlotWidget);
+            tool::PlotCell_Config * plot_cell_conf = &(*iter);
+            sp_dataPlotWidget->set_Config(plot_cell_conf);
+            sp_dataPlotWidget->initMessagePlot();
+            ui->verticalLayout_dataPlot->addWidget(sp_dataPlotWidget.get());
+        }
+    }else{
+        std::shared_ptr<QDataPlotWidget> sp_dataPlotWidget(new QDataPlotWidget(this));
+        insertDataPlotCell(sp_dataPlotWidget);
+        tool::PlotCell_Config * plot_conf = config_->plot_window_config_->addPlotCellConfig(nullptr);
+        sp_dataPlotWidget->set_Config(plot_conf);
+        sp_dataPlotWidget->initMessagePlot();
+        ui->verticalLayout_dataPlot->addWidget(sp_dataPlotWidget.get());
+    }
     ui->verticalLayout_dataPlot->setMargin(0);
     ui->verticalLayout_dataPlot->setSpacing(0);
-    // connect(sp_dataPlotWidget.get(), SIGNAL(subscribeMsgValue(QString,QString)),m_dataManager,SLOT(OnSubscribeMsgValue(QString,QString)));
-    // connect(sp_dataPlotWidget.get(), SIGNAL(UnsubscribeMsgValue(QString,QString)),m_dataManager,SLOT(OnUnSubscribeMsgValue(QString,QString)));
-
-    connect(sp_dataPlotWidget.get(), SIGNAL(addNewDataPlotWindow(QDataPlotWidget *)),this,SLOT(OnAddNewDataPlotWindow(QDataPlotWidget *)));
-    connect(sp_dataPlotWidget.get(), SIGNAL(removeDataPlotWindow(QDataPlotWidget *)),this,SLOT(OnRemoveDataPlotWindow(QDataPlotWidget *)));
-
 }
 
 void MainWindow::InitDataManager(){
     m_dataManager = tool::DataManager::GetInstance();
     m_dataManager->Init();
     m_dataManager->SetMaxQueueSize(20);
+    m_dataManager->set_Config(config_->data_manager_config_);
     registerMessage(m_dataManager);
     ui->openGLWidget_viewer->connectDataManager(m_dataManager);
     ui->tableWidget_channel->connectDataManager(m_dataManager);
@@ -189,7 +247,8 @@ void MainWindow::InitThreadManager(){
     m_threadManager.CreateThread();
     m_pPlayProcess = &(m_threadManager.playProcess());
     m_pLogProcess  = &(m_threadManager.logProcess());
-
+    m_pPlayProcess->set_Config(config_->player_config_);
+    m_pLogProcess->set_Config(config_->logger_config_);
     QString strTimeStamp = QString::fromStdString(ConvertGlobalTimeStampInMicroSec2String(GetGlobalTimeStampInMicroSec()));
     OnShowOperationInfo(strTimeStamp + QString(" : Initiate Logger and Player successed!"),QColor(0,255,0));
 }
@@ -215,6 +274,7 @@ void MainWindow::InitOptionWindow(){
 void MainWindow::InitPropertyBrowser(){
     m_propertyBrowser = new QOptionPropertyBrowser();
     ui->verticalLayout_property->addWidget(m_propertyBrowser);
+    m_propertyBrowser->set_Config(config_->option_config_);
 }
 
 void MainWindow::InitMessageSendBrowser(){
@@ -262,6 +322,8 @@ void MainWindow::InitChannelTabWindow(){
     ui->horizontalSlider_play->SetShowLabel(ui->label_sliderShow_player);
     ui->treeWidget_channel->Init();
     ui->tableWidget_channel->setAutoFillBackground(true);
+    ui->tableWidget_channel->set_Config(config_->chnl_win_Config_);
+    ui->treeWidget_channel->set_Config(config_->chnl_win_Config_);
 }
 
 void MainWindow::InitButtonWindow(){
@@ -442,6 +504,38 @@ void MainWindow::SetButtonIconName(QPushButton   * pButton,
     pButton->setLayoutDirection(Qt::LayoutDirection::LeftToRight);
 }
 
+void MainWindow::insertDataPlotCell(std::shared_ptr<QDataPlotWidget>  sp_data_plot_cell,
+                                    QDataPlotWidget                 * pre_plot_cell
+                                   ){
+    sp_data_plot_cell->connectDataManager(m_dataManager);
+    connect(sp_data_plot_cell.get(), SIGNAL(subscribeMsgValue(QString,QString)),m_dataManager,SLOT(OnSubscribeMsgValue(QString,QString)));
+    connect(sp_data_plot_cell.get(), SIGNAL(UnsubscribeMsgValue(QString,QString)),m_dataManager,SLOT(OnUnSubscribeMsgValue(QString,QString)));
+    connect(sp_data_plot_cell.get(), SIGNAL(addNewDataPlotWindow(QDataPlotWidget *)),this,SLOT(OnAddNewDataPlotWindow(QDataPlotWidget *)));
+    connect(sp_data_plot_cell.get(), SIGNAL(removeDataPlotWindow(QDataPlotWidget *)),this,SLOT(OnRemoveDataPlotWindow(QDataPlotWidget *)));
+    if(pre_plot_cell == nullptr){
+        m_dataPlotWindow_List.push_back(sp_data_plot_cell);
+    }else{
+        bool isfind(false);
+        QList<std::shared_ptr<QDataPlotWidget> >::iterator preIter;
+        for(QList<std::shared_ptr<QDataPlotWidget> >::iterator Iter = m_dataPlotWindow_List.begin();
+            Iter != m_dataPlotWindow_List.end();
+            Iter++){
+                std::shared_ptr<QDataPlotWidget> sp_dataPlot = *Iter;
+                if(sp_dataPlot.get() == pre_plot_cell){
+                    isfind  = true;
+                    preIter = Iter;
+                }else{
+                    /* go on*/
+                }
+        }
+        if(isfind){
+            m_dataPlotWindow_List.insert(preIter + 1,sp_data_plot_cell);
+        }else{
+            m_dataPlotWindow_List.push_back(sp_data_plot_cell);
+        }
+    }
+}
+
 void MainWindow::clearAllDataPlot(){
     for(QList<std::shared_ptr<QDataPlotWidget> >::iterator iter = m_dataPlotWindow_List.begin();
         iter != m_dataPlotWindow_List.end();
@@ -475,6 +569,18 @@ void MainWindow::OnOccurNewInformation(QString infoName){
 
 /* status bar slot*/
 void MainWindow::OnShowSaveLogStatus(LogFileStatus logfilestatus){
+    static int64_t cur_log_start_tiestamp(0);
+    static int cur_log_index(-1);
+    if(logfilestatus.nStartTimeStamp != cur_log_start_tiestamp){
+        ui->treeWidget_tag->closeLogInfo(cur_log_index);
+        int logIndex = ui->treeWidget_tag->generateRecordInfo(QString::fromStdString(logfilestatus.sLogfileName),
+                                                              QString::fromStdString(logfilestatus.sLogfileDir),
+                                                              logfilestatus.nStartTimeStamp);
+        cur_log_index = logIndex;
+        cur_log_start_tiestamp = logfilestatus.nStartTimeStamp;
+    }else{
+        /* do nothing*/
+    }
     ui->label_channelCount->setText(QString::number(logfilestatus.nMsgChannel));
     ui->statusBar->clearMessage();
     QString startTimeText = QString("start time: ") + QString::fromStdString(ConvertGlobalTimeStampInMicroSec2String(logfilestatus.nStartTimeStamp));
@@ -553,9 +659,9 @@ void MainWindow::OnStartSaveLog(QString logName){
     m_pLogProcess->startLogEvents();
     QString slogDir = m_pLogProcess->getLogDir();
     int64_t startTime  = m_pLogProcess->currentEventTimeStamp();
-    int logIndex = ui->treeWidget_tag->openCurLogInfo(logName,
-                                                        slogDir,
-                                                        startTime);
+    // int logIndex = ui->treeWidget_tag->openCurLogInfo(logName,
+    //                                                     slogDir,
+    //                                                     startTime);
     ui->lineEdit_issue->clear();
     QString strTimeStamp = QString::fromStdString(ConvertGlobalTimeStampInMicroSec2String(GetGlobalTimeStampInMicroSec()));
     OnShowOperationInfo(strTimeStamp + QString(" : Start log message to ->") + logName);    
@@ -590,17 +696,17 @@ void MainWindow::OnStartRecord(){
         }else{
             /* go on*/
         }
-        QString logName = inputName + QString("_") + QString::fromStdString(GetCurrentDateTimeString()) + QString(".log");
-        OnSaveRecord(logName);
+        QString record_name = inputName + QString("_") + QString::fromStdString(GetCurrentDateTimeString()) + QString(".log");
+        OnSaveRecord(record_name);
     }
 }
 
-void MainWindow::OnSaveRecord(QString logName){
-    m_pLogProcess->setLogName(logName);
+void MainWindow::OnSaveRecord(QString record_name){
+    m_pLogProcess->setRecordName(record_name);
     //m_pLogProcess->startRecordEvents();
     int64_t startTime = m_pLogProcess->recordStartTimeStamp();
     QString slogDir = m_pLogProcess->getLogDir();
-    int logIndex = ui->treeWidget_tag->generateRecordInfo(logName,
+    int logIndex = ui->treeWidget_tag->generateRecordInfo(record_name,
                                                           slogDir,
                                                           startTime);
     int64_t stopTime  = m_pLogProcess->currentEventTimeStamp();
@@ -612,7 +718,7 @@ void MainWindow::OnSaveRecord(QString logName){
     ui->treeWidget_tag->closeLogInfo(logIndex);
     ui->lineEdit_issue->clear();
     QString strTimeStamp = QString::fromStdString(ConvertGlobalTimeStampInMicroSec2String(GetGlobalTimeStampInMicroSec()));
-    OnShowOperationInfo(strTimeStamp + QString(" : Record Log ->") + logName);    
+    OnShowOperationInfo(strTimeStamp + QString(" : Record Log ->") + record_name);    
 }
 
 void MainWindow::OnStartSnapShoot(){
@@ -1119,6 +1225,9 @@ void MainWindow::OnChangeTheme(THEME_TYPE themeType){
             palette.setColor(QPalette::Button,Qt::white);
             palette.setColor(QPalette::ButtonText,Qt::black);
         }
+        if(config_ != nullptr){
+            config_->window_config_->window_theme_ = static_cast<int>(Theme_Simple);
+        }else{/* do nothing*/}
         break;
     case Theme_ScienceFiction:
         {
@@ -1133,6 +1242,9 @@ void MainWindow::OnChangeTheme(THEME_TYPE themeType){
             palette.setColor(QPalette::Button,Qt::darkCyan);
             palette.setColor(QPalette::ButtonText,Qt::black);
         }
+        if(config_ != nullptr){
+            config_->window_config_->window_theme_ = static_cast<int>(Theme_ScienceFiction);
+        }else{/* do nothing*/}
         break;
     case Theme_Girl:
         {
@@ -1147,6 +1259,9 @@ void MainWindow::OnChangeTheme(THEME_TYPE themeType){
             palette.setColor(QPalette::Button,QColor(255,0,255));
             palette.setColor(QPalette::ButtonText,Qt::black);
         }
+        if(config_ != nullptr){
+            config_->window_config_->window_theme_ = static_cast<int>(Theme_Girl);
+        }else{/* do nothing*/}
         break;
     case Theme_Natural:
         {
@@ -1161,6 +1276,9 @@ void MainWindow::OnChangeTheme(THEME_TYPE themeType){
             palette.setColor(QPalette::Button,QColor(255,193,37));
             palette.setColor(QPalette::ButtonText,Qt::black);
         }
+        if(config_ != nullptr){
+            config_->window_config_->window_theme_ = static_cast<int>(Theme_Natural);
+        }else{/* do nothing*/}
         break;   
     case Theme_Laker:
         {
@@ -1175,6 +1293,9 @@ void MainWindow::OnChangeTheme(THEME_TYPE themeType){
             palette.setColor(QPalette::Button,QColor(255,215,0));
             palette.setColor(QPalette::ButtonText,Qt::black);
         }
+        if(config_ != nullptr){
+            config_->window_config_->window_theme_ = static_cast<int>(Theme_Laker);
+        }else{/* do nothing*/}
         break;
     case Theme_CyberPunk:
         {
@@ -1189,6 +1310,9 @@ void MainWindow::OnChangeTheme(THEME_TYPE themeType){
             palette.setColor(QPalette::Button,QColor(0,0,225));
             palette.setColor(QPalette::ButtonText,Qt::black);
         }
+        if(config_ != nullptr){
+            config_->window_config_->window_theme_ = static_cast<int>(Theme_CyberPunk);
+        }else{/* do nothing*/}
         break;
     default:
         break;
@@ -1210,41 +1334,73 @@ void MainWindow::OnSendMessageBrowserSendMsgName(QString msgName){
     }
 }
 
+//insertDataPlotCell(sp_dataPlotWidget);
+
 void MainWindow::OnAddNewDataPlotWindow(QDataPlotWidget * p_DataPlotWidget){
-    bool isfind(false);
-    QList<std::shared_ptr<QDataPlotWidget> >::iterator beforeIter;
+    for(QList<std::shared_ptr<QDataPlotWidget> >::iterator Iter = m_dataPlotWindow_List.begin();
+        Iter != m_dataPlotWindow_List.end();
+        Iter++){
+            ui->verticalLayout_dataPlot->removeWidget(Iter->get());
+    }
+    tool::PlotCell_Config * pre_plot_conf = nullptr;
+    if(p_DataPlotWidget != nullptr){
+        pre_plot_conf = p_DataPlotWidget->get_Config();
+    }else{
+        pre_plot_conf = nullptr;
+    }
+    std::shared_ptr<QDataPlotWidget> sp_NewDataPlotWidget(new QDataPlotWidget(this));
+    insertDataPlotCell(sp_NewDataPlotWidget,p_DataPlotWidget);
+    tool::PlotCell_Config * plot_conf = config_->plot_window_config_->addPlotCellConfig(pre_plot_conf);
+    sp_NewDataPlotWidget->set_Config(plot_conf);
+    sp_NewDataPlotWidget->initMessagePlot();
     for(QList<std::shared_ptr<QDataPlotWidget> >::iterator Iter = m_dataPlotWindow_List.begin();
         Iter != m_dataPlotWindow_List.end();
         Iter++){
             std::shared_ptr<QDataPlotWidget> sp_dataPlot = *Iter;
-            if(sp_dataPlot.get() == p_DataPlotWidget){
-                isfind = true;
-                beforeIter = Iter + 1;
-            }else{
-                /* go on*/
-            }
-            ui->verticalLayout_dataPlot->removeWidget(Iter->get());
-    }
-    if(!isfind){
-        /*error*/
-    }else{
-        std::shared_ptr<QDataPlotWidget> sp_NewDataPlotWidget(new QDataPlotWidget(this));
-        sp_NewDataPlotWidget->connectDataManager(m_dataManager);
-        sp_NewDataPlotWidget->initMessagePlot();
-        connect(sp_NewDataPlotWidget.get(), SIGNAL(subscribeMsgValue(QString,QString)),m_dataManager,SLOT(OnSubscribeMsgValue(QString,QString)));
-        connect(sp_NewDataPlotWidget.get(), SIGNAL(UnsubscribeMsgValue(QString,QString)),m_dataManager,SLOT(OnUnSubscribeMsgValue(QString,QString)));
-        connect(sp_NewDataPlotWidget.get(), SIGNAL(addNewDataPlotWindow(QDataPlotWidget *)),this,SLOT(OnAddNewDataPlotWindow(QDataPlotWidget *)));
-        connect(sp_NewDataPlotWidget.get(), SIGNAL(removeDataPlotWindow(QDataPlotWidget *)),this,SLOT(OnRemoveDataPlotWindow(QDataPlotWidget *)));
-        m_dataPlotWindow_List.insert(beforeIter,sp_NewDataPlotWidget);
-        for(QList<std::shared_ptr<QDataPlotWidget> >::iterator Iter = m_dataPlotWindow_List.begin();
-            Iter != m_dataPlotWindow_List.end();
-            Iter++){
-                std::shared_ptr<QDataPlotWidget> sp_dataPlot = *Iter;
-                ui->verticalLayout_dataPlot->addWidget(sp_dataPlot.get());
-                ui->verticalLayout_dataPlot->setStretchFactor(sp_dataPlot.get(),1);
-        } 
-    }
+            ui->verticalLayout_dataPlot->addWidget(sp_dataPlot.get());
+            ui->verticalLayout_dataPlot->setStretchFactor(sp_dataPlot.get(),1);
+    } 
 }
+
+// void MainWindow::OnAddNewDataPlotWindow(QDataPlotWidget * p_DataPlotWidget){
+//     bool isfind(false);
+//     QList<std::shared_ptr<QDataPlotWidget> >::iterator beforeIter;
+//     tool::PlotCell_Config * before_plot_cell_config = nullptr;
+//     for(QList<std::shared_ptr<QDataPlotWidget> >::iterator Iter = m_dataPlotWindow_List.begin();
+//         Iter != m_dataPlotWindow_List.end();
+//         Iter++){
+//             std::shared_ptr<QDataPlotWidget> sp_dataPlot = *Iter;
+//             if(sp_dataPlot.get() == p_DataPlotWidget){
+//                 isfind = true;
+//                 beforeIter = Iter;
+//                 before_plot_cell_config = (*Iter)->get_Config();
+//             }else{
+//                 /* go on*/
+//             }
+//             ui->verticalLayout_dataPlot->removeWidget(Iter->get());
+//     }
+//     if(!isfind){
+//         /*error*/
+//     }else{
+//         std::shared_ptr<QDataPlotWidget> sp_NewDataPlotWidget(new QDataPlotWidget(this));
+//         sp_NewDataPlotWidget->connectDataManager(m_dataManager);
+//         tool::PlotCell_Config * new_plot_cell_config = config_->plot_window_config_.addPlotCellConfig(before_plot_cell_config);
+//         sp_NewDataPlotWidget->set_Config(new_plot_cell_config);
+//         sp_NewDataPlotWidget->initMessagePlot();
+//         connect(sp_NewDataPlotWidget.get(), SIGNAL(subscribeMsgValue(QString,QString)),m_dataManager,SLOT(OnSubscribeMsgValue(QString,QString)));
+//         connect(sp_NewDataPlotWidget.get(), SIGNAL(UnsubscribeMsgValue(QString,QString)),m_dataManager,SLOT(OnUnSubscribeMsgValue(QString,QString)));
+//         connect(sp_NewDataPlotWidget.get(), SIGNAL(addNewDataPlotWindow(QDataPlotWidget *)),this,SLOT(OnAddNewDataPlotWindow(QDataPlotWidget *)));
+//         connect(sp_NewDataPlotWidget.get(), SIGNAL(removeDataPlotWindow(QDataPlotWidget *)),this,SLOT(OnRemoveDataPlotWindow(QDataPlotWidget *)));
+//         m_dataPlotWindow_List.insert(beforeIter + 1,sp_NewDataPlotWidget);
+//         for(QList<std::shared_ptr<QDataPlotWidget> >::iterator Iter = m_dataPlotWindow_List.begin();
+//             Iter != m_dataPlotWindow_List.end();
+//             Iter++){
+//                 std::shared_ptr<QDataPlotWidget> sp_dataPlot = *Iter;
+//                 ui->verticalLayout_dataPlot->addWidget(sp_dataPlot.get());
+//                 ui->verticalLayout_dataPlot->setStretchFactor(sp_dataPlot.get(),1);
+//         } 
+//     }
+// }
 
 void MainWindow::OnRemoveDataPlotWindow(QDataPlotWidget * p_DataPlotWidget){
     if(m_dataPlotWindow_List.size() <= 1){
@@ -1268,6 +1424,10 @@ void MainWindow::OnRemoveDataPlotWindow(QDataPlotWidget * p_DataPlotWidget){
             ui->verticalLayout_dataPlot->removeWidget(iter->get());
     }
     if(isfind){
+        //remove config
+        tool::PlotCell_Config * plot_cell_config = (*removeIter)->get_Config();
+        config_->plot_window_config_->removePlotCellConfig(plot_cell_config);
+        //remove plot cell
         m_dataPlotWindow_List.erase(removeIter);
     }else{
         /* not find*/

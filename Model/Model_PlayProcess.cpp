@@ -79,10 +79,11 @@ long int LogFileInfo::getEventTimeInterval(long int currentTimeStamp){
 namespace tool{
 
 PlayProcess::PlayProcess(QObject     * parent):
-m_dataManager(nullptr),
-m_pLcmLogFile(nullptr),
-m_pLCM(nullptr),
-m_pUIUpdateTimer(nullptr)
+  config_(nullptr),
+  m_dataManager(nullptr),
+  m_pLcmLogFile(nullptr),
+  m_pLCM(nullptr),
+  m_pUIUpdateTimer(nullptr)
 {
     qRegisterMetaType<LogFileInfo>();
 }
@@ -119,6 +120,24 @@ void PlayProcess::StartWork(){
 
 void PlayProcess::StopWork(){
     m_isPLayerWork.store(false);
+}
+
+void PlayProcess::set_Config(tool::Player_Config * player_config){
+    if(player_config != nullptr){
+        config_ = player_config;
+        m_isPublishEvent.store(config_->is_publish_Lcm_);
+        SetPlaySpeed(config_->play_speed_);
+    }else{
+        /* do nothing*/
+    }
+}
+void PlayProcess::save_Config(){
+    if(config_ != nullptr){
+        config_->is_publish_Lcm_ = m_isPublishEvent;
+        config_->play_speed_     = m_fReplaySpeed;
+    }else{
+        /* do nothing*/
+    }    
 }
 
 bool PlayProcess::Play_Step(){

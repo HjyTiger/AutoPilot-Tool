@@ -53,39 +53,40 @@ CommonInformation Information::commonInfo;
 
 
 Information::Information(const std::string & name):
-m_name(name),
-isDataManagerConnected(false),
-isValid(false),
-isFirstMsg(false),
-isBroadCast(true),
-isRecorded(true),
-isSelected(true),
-isUpdateCommonInfo(false),
-m_timestamp(0),
-m_nMsgCount(0),
-m_nMsgNumber(0),
-m_nMsgSize(0),
-m_nFirstTimeStamp(0),
-m_nLastTimeStamp(0),
-m_nCurrentDataTimeStamp(0),
-m_nCurrentPlayTimeStamp(0),
-m_nPreviousDataTimeStamp(0),
-m_nPreviousPlayTimeStamp(0),
-m_nDeltaDataTimeStamp(0),
-m_nDeltaPlayTimeStamp(0),
-m_nAvgMsgSize(0),
-m_nCurrentMsgSize(0),
-m_currentTimeStampSecond(0.0),
-m_fDataFrequency(0.0),
-m_fPlayFrequency(0.0),
-m_fDataPeriod(0.0),
-m_fPlayPeriod(0.0),
-m_fAvgFrequency(0.0),
-m_fAvgPeriod(0.0),
-m_color(255,255,255),
-m_sampleMode(sm_time),
-m_sampleCount(0),
-m_sampleTimeInterval(0.1)/* default 0.1s*/{
+  m_dataManager(nullptr),
+  m_name(name),
+  isDataManagerConnected(false),
+  isValid(false),
+  isFirstMsg(false),
+  isBroadCast(true),
+  isRecorded(true),
+  isSelected(true),
+  isUpdateCommonInfo(false),
+  m_timestamp(0),
+  m_nMsgCount(0),
+  m_nMsgNumber(0),
+  m_nMsgSize(0),
+  m_nFirstTimeStamp(0),
+  m_nLastTimeStamp(0),
+  m_nCurrentDataTimeStamp(0),
+  m_nCurrentPlayTimeStamp(0),
+  m_nPreviousDataTimeStamp(0),
+  m_nPreviousPlayTimeStamp(0),
+  m_nDeltaDataTimeStamp(0),
+  m_nDeltaPlayTimeStamp(0),
+  m_nAvgMsgSize(0),
+  m_nCurrentMsgSize(0),
+  m_currentTimeStampSecond(0.0),
+  m_fDataFrequency(0.0),
+  m_fPlayFrequency(0.0),
+  m_fDataPeriod(0.0),
+  m_fPlayPeriod(0.0),
+  m_fAvgFrequency(0.0),
+  m_fAvgPeriod(0.0),
+  m_color(255,255,255),
+  m_sampleMode(sm_time),
+  m_sampleCount(0),
+  m_sampleTimeInterval(0.1)/* default 0.1s*/{
     pthread_rwlock_init(&m_pRWlock,NULL);
     m_pMessageBase = new MessageBase;
     initGLdata();
@@ -359,7 +360,9 @@ bool GroupInfo::updateGroupInfo(std::shared_ptr<LCM_LogEventWrap> sp_logEventWra
 }
 
 /* DataManager*/
-DataManager::DataManager(){
+DataManager::DataManager():
+   config_(nullptr)
+{
     InitRWlock();
 }
 
@@ -371,7 +374,7 @@ void DataManager::Init(){
     isShowDataStatus.store(true);
     isAllSelected.store(true);
     m_nQueueDataSize = 0;
-    m_nMaxQueueSize = 20;
+    max_queue_size_ = 20;
     m_nMaxDestributedSize = 20000;
     nMsgChannel = 0;
     nMsgCount = 0;
@@ -427,6 +430,7 @@ bool DataManager::disconnectClientQueue(thread_safe::deque<std::shared_ptr<LCM_L
     m_clientEventWrapQueues.remove(clientQueue);
     pthread_rwlock_unlock(&m_clientEventWrapQueues_RWlock);
 }
+
 Information & DataManager::pickInfo(const std::string & infoName,
                                     bool              & isfind){
     static Information empyInfo("");
@@ -662,7 +666,7 @@ bool DataManager::copyEvent(lcm::LogEvent * target,
 
 int DataManager::GetMaxQueueSize(){
     pthread_rwlock_rdlock(&m_dataQueueInfo_RWlock);
-    int size = m_nMaxQueueSize;
+    int size = max_queue_size_;
     pthread_rwlock_unlock(&m_dataQueueInfo_RWlock);
     return size;
 }
@@ -670,13 +674,32 @@ int DataManager::GetMaxQueueSize(){
 void DataManager::SetMaxQueueSize(int size){
     pthread_rwlock_wrlock(&m_dataQueueInfo_RWlock);
     if(size < 20){
-        m_nMaxQueueSize = 20;
+        max_queue_size_ = 20;
     }else if(size > 2000){
-        m_nMaxQueueSize = 2000;
+        max_queue_size_ = 2000;
     }else{
-        m_nMaxQueueSize = size;
+        max_queue_size_ = size;
     }
     pthread_rwlock_unlock(&m_dataQueueInfo_RWlock);
+
+}
+
+void DataManager::set_Config(DataManager_Config * datamanager_config){
+    if(datamanager_config != nullptr){
+        config_ = datamanager_config;
+    }else{
+        /* do nothing*/
+    }
+}
+
+void DataManager::save_Config(){
+    if(config_ != nullptr){
+        config_->max_queue_size_ = max_queue_size_;
+    }else{/**/}
+}
+
+DataManager_Config * DataManager::get_Config(){
+    return config_;
 }
 
 void DataManager::setAllSelected(bool isSelected){

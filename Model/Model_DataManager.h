@@ -58,6 +58,7 @@
 #include "ThreadSafe_STL/thread_safe_deque.h"
 #include "ThreadSafe_STL/thread_safe_map.h"
 #include "ThreadSafe_STL/thread_safe_set.h"
+#include "Model/Model_Config.h"
 #include "Model/Model_Common.h"
 #include "Model/Model_Type.h"
 #include "Model/Model_Message.h"
@@ -533,7 +534,7 @@ public:
                              double              sampleTimeInterval = 0.05  //0.05 second
                              );
     template <typename T>
-    bool registerInformation(const Message_Config & msgConfig);
+    bool registerInformation(const Information_Config & msgConfig);
     bool connectClientQueue(thread_safe::deque<std::shared_ptr<LCM_LogEventWrap>> * clientQueue);
     bool disconnectClientQueue(thread_safe::deque<std::shared_ptr<LCM_LogEventWrap>> * clientQueue);
     thread_safe::deque<std::shared_ptr<LCM_LogEventWrap>> & dataQueue(){return m_eventWrapDeque;}
@@ -558,8 +559,11 @@ public:
                    lcm::LogEvent * src);
     int  GetMaxQueueSize();
     void SetMaxQueueSize(int size);
-public:
+
     /* state set and get*/
+    void set_Config(DataManager_Config * datamanager_config);
+    void save_Config();
+    DataManager_Config * get_Config();
     void setAllSelected(bool isSelected);
     void setSelected(std::string infoNamem,bool isSelected);
     bool isSelected(std::string infoName);
@@ -609,6 +613,7 @@ public:
     float    fBandWidth;
 
 private:
+    DataManager_Config * config_;
     thread_safe::deque<std::shared_ptr<LCM_LogEventWrap> > m_eventWrapDeque;
     std::list<thread_safe::deque<std::shared_ptr<LCM_LogEventWrap>> *>  m_clientEventWrapQueues;
     pthread_rwlock_t                                                    m_clientEventWrapQueues_RWlock;
@@ -617,7 +622,8 @@ private:
     pthread_rwlock_t                     m_curEvent_RWlock;
 
     std::atomic_llong                   m_nQueueDataSize;
-    int                                 m_nMaxQueueSize;
+    //int                                 m_nMaxQueueSize;
+    int                                 max_queue_size_;
     int                                 m_nMaxDestributedSize;
     pthread_rwlock_t                    m_dataQueueInfo_RWlock;
 signals:
@@ -683,39 +689,40 @@ bool DataManager::registerInformation(const std::string & infoName,
 }
 
 template <typename T>
-bool DataManager::registerInformation(const Message_Config & msgConfig){
-    if(msgConfig.infoName.empty()){
+bool DataManager::registerInformation(const Information_Config & infoConfig){
+    if(infoConfig.info_name_.empty()){
         return false;
     }else{
         /* go on*/
     }
-    thread_safe::map<std::string,std::shared_ptr<GroupInfo> >::iterator groupIter = m_infoGroups.find(msgConfig.groupName);
+    Information_Config * info_conf = config_->addInfoConfig(infoConfig.info_name_);
+    info_conf->merge(infoConfig);
+    thread_safe::map<std::string,std::shared_ptr<GroupInfo> >::iterator groupIter = m_infoGroups.find(info_conf->group_name_);
     if(groupIter == m_infoGroups.end()){
         /* insert new group*/
         std::shared_ptr<GroupInfo> new_group(new GroupInfo);
         new_group->set_id(m_infoGroups.size());
-        new_group->set_name(msgConfig.groupName);
-        new_group->set_color(msgConfig.groupColor);
-        new_group->m_membber_size_Map.insert(std::pair<std::string,long int>(msgConfig.infoName,0));
-        m_infoGroups.insert(std::pair<std::string,std::shared_ptr<GroupInfo> >(msgConfig.groupName,new_group));
+        new_group->set_name(info_conf->group_name_);
+        new_group->set_color(info_conf->group_color_);
+        new_group->m_membber_size_Map.insert(std::pair<std::string,long int>(info_conf->info_name_,0));
+        m_infoGroups.insert(std::pair<std::string,std::shared_ptr<GroupInfo> >(info_conf->group_name_,new_group));
     }else{
-        groupIter->second->m_membber_size_Map.insert(std::pair<std::string,long int>(msgConfig.infoName,0));
+        groupIter->second->m_membber_size_Map.insert(std::pair<std::string,long int>(info_conf->info_name_,0));
     }
-    m_infoName_groupName_Map.insert(std::pair<std::string,std::string>(msgConfig.infoName,msgConfig.groupName));
+    m_infoName_groupName_Map.insert(std::pair<std::string,std::string>(info_conf->info_name_,info_conf->group_name_));
 
-    std::shared_ptr<Information> sp_Infomation(new InformationType<T>(msgConfig.infoName));
-    sp_Infomation->setColor(msgConfig.infoColor);
-    sp_Infomation->isUpdateCommonInfo.store(msgConfig.m_isUpdateCommonInfo);
-    sp_Infomation->setSampleMode(msgConfig.sampleMode);
-    sp_Infomation->setSampleCount(msgConfig.sampleCount);
-    sp_Infomation->setSampleTimeInterval(msgConfig.sampleTimeInterval);
-    sp_Infomation->m_valuePool.setValueConfig(msgConfig.m_value_config);
+    std::shared_ptr<Information> sp_Infomation(new InformationType<T>(info_conf->info_name_));
+    sp_Infomation->setColor(info_conf->info_color_);
+    sp_Infomation->isUpdateCommonInfo.store(info_conf->is_update_common_info_);
+    sp_Infomation->setSampleMode(info_conf->sample_mode_);
+    sp_Infomation->setSampleCount(info_conf->sample_count_);
+    sp_Infomation->setSampleTimeInterval(info_conf->sample_time_interval_);
     if(sp_Infomation->update_ValuePool(true)){
-        m_plotInfo_Set.insert(msgConfig.infoName);
+        m_plotInfo_Set.insert(info_conf->info_name_);
     }else{/**/}
-    m_informationPool_Map.insert(std::pair<std::string,std::shared_ptr<Information> >(msgConfig.infoName,sp_Infomation));
-    m_isSelected_Map.insert(std::pair<std::string,bool>(msgConfig.infoName,isAllSelected.load()));
-    m_registeredInfo_Set.insert(msgConfig.infoName);
+    m_informationPool_Map.insert(std::pair<std::string,std::shared_ptr<Information> >(info_conf->info_name_,sp_Infomation));
+    m_isSelected_Map.insert(std::pair<std::string,bool>(info_conf->info_name_,isAllSelected.load()));
+    m_registeredInfo_Set.insert(info_conf->info_name_);
     return true;    
 }
 

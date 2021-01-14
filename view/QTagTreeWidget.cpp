@@ -174,8 +174,14 @@ int QTagTreeWidget::addLogInfo(LogInfo loginfo){
       LogInfo & recordLoginfo = m_logRecords[i];
       static char cur_file_abs_path[MAXPATHLEN];
       static char record_file_abs_path[MAXPATHLEN];
-      realpath(loginfo.logPath.c_str(),cur_file_abs_path);
-      realpath(recordLoginfo.logPath.c_str(),record_file_abs_path);
+      char * cur_file_result = realpath(loginfo.logPath.c_str(),cur_file_abs_path);
+      char * rec_file_result = realpath(recordLoginfo.logPath.c_str(),record_file_abs_path);
+      // if(cur_file_result == nullptr ||
+      //    rec_file_result == nullptr){
+      //      return m_logRecords.size() - 1;
+      // }else{
+      //   /* go on*/
+      // }
       if(strcmp(cur_file_abs_path,record_file_abs_path) == 0){
         /* log info already exist*/
         return i;

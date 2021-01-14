@@ -113,7 +113,7 @@ class QMessageSendBrowser: public QtTreePropertyBrowser
     Q_OBJECT
 public:
     explicit QMessageSendBrowser(QWidget *parent = 0);
-    ~QMessageSendBrowser();
+    virtual ~QMessageSendBrowser();
 public:
     void Init();
     void InitSignalAndSlot();

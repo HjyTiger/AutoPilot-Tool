@@ -55,8 +55,6 @@ namespace tool{
 template<>
 inline bool extract_PlotValue<sample::Sample>(ValuePool      & valuePool,
                                               sample::Sample & sample){
-    valuePool.setColor(QColor(0,0,255));
-
     valuePool.value("pts.size") = static_cast<double>(sample.pts_size());
     valuePool.value("lines.size") = static_cast<double>(sample.lines_size());
     return true;

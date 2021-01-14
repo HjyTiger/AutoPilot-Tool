@@ -48,14 +48,14 @@
 #include "view/QOptionPropertyBrowser.h"
 
 
-QOptionPropertyBrowser::QOptionPropertyBrowser(QWidget *parent )
+QOptionPropertyBrowser::QOptionPropertyBrowser(QWidget *parent ):
+  config_(nullptr)
 {
   Init();
 }
 
 QOptionPropertyBrowser::~QOptionPropertyBrowser()
 {
-
 }
 
 void QOptionPropertyBrowser::Init(){
@@ -272,6 +272,40 @@ void QOptionPropertyBrowser::InitPlayerProperty(){
     this->setBackgroundColor(item,QColor(100,149,237));
 }
 
+void QOptionPropertyBrowser::set_Config(tool::Option_Config * option_config){
+    if(option_config != nullptr){
+        config_ = option_config;
+        if(config_->logger_config_ != nullptr){
+            QtProperty * logConTypeItem = m_Property_Map[std::string("LogConstrainType")];
+            m_enumManager->setValue(logConTypeItem,config_->logger_config_->log_constrain_type_);
+
+            QtProperty * logValSetItem = m_Property_Map[std::string("LogConstrainValue")];
+            m_doubleManager->setValue(logValSetItem,config_->logger_config_->log_constrain_value_);
+
+
+            QtProperty * recordmodeItem = m_Property_Map[std::string("RecordMode")];
+            m_enumManager->setValue(recordmodeItem,config_->logger_config_->record_mode_);
+
+            QtProperty * recValSetItem = m_Property_Map[std::string("RecordValue")];
+            m_doubleManager->setValue(recValSetItem,config_->logger_config_->record_value_);
+        }else{}
+        if(config_->player_config_ != nullptr){
+            QtProperty * enablePublishLcmItem = m_Property_Map[std::string("PublishLCMMessage")];
+            m_boolManager->setValue(enablePublishLcmItem,config_->player_config_->is_publish_Lcm_);
+
+            QtProperty * playspeedProp = m_Property_Map[std::string("PlaySpeed")];
+            m_doubleManager->setValue(playspeedProp,config_->player_config_->play_speed_);
+        }else{}
+        if(config_->window_config_ != nullptr){}else{}
+    }else{
+        /* do nothing*/
+    }
+}
+
+void QOptionPropertyBrowser::save_Config(){
+
+}
+
 void QOptionPropertyBrowser::OnStringChanged(QtProperty *property, QString val){
 
 }
@@ -387,7 +421,8 @@ void QOptionPropertyBrowser::OnDoubleChanged(QtProperty *property, double val){
         std::map<std::string,QtProperty *>::iterator iter = m_Property_Map.find("LogConstrainType");
         if(iter != m_Property_Map.end()){
             QtProperty * logTypeProp = iter->second;
-            propOperaValue.value_double = m_doubleManager->value(logTypeProp);
+            propOperaValue.value_enum = m_enumManager->value(logTypeProp);
+            propOperaValue.value_double = m_doubleManager->value(property);
             propOperaValue.value_float  = propOperaValue.value_double;
             propOpera = CHANGE_LOG_CONS_VALUE;
         }else{
@@ -397,22 +432,17 @@ void QOptionPropertyBrowser::OnDoubleChanged(QtProperty *property, double val){
         std::map<std::string,QtProperty *>::iterator iter = m_Property_Map.find("RecordMode");
         if(iter != m_Property_Map.end()){
             QtProperty * recordModeProp = iter->second;
-            propOperaValue.value_double = m_doubleManager->value(recordModeProp);  
+            propOperaValue.value_enum = m_enumManager->value(recordModeProp);
+            propOperaValue.value_double = m_doubleManager->value(property);  
             propOperaValue.value_float  = propOperaValue.value_double;          
             propOpera = CHANGE_RECORD_VALUE;
         }else{
             /* do nothing*/
         }
     }else if(property->propertyId() == QString("PlaySpeed")){
-        std::map<std::string,QtProperty *>::iterator iter = m_Property_Map.find("PlaySpeed");
-        if(iter != m_Property_Map.end()){
-            QtProperty * playSpeedProp = iter->second;
-            propOperaValue.value_double = m_doubleManager->value(playSpeedProp);
-            propOperaValue.value_float  = propOperaValue.value_double;  
-            propOpera = CHANGE_PLAY_SPEED;
-        }else{
-            /* do nothing*/
-        }        
+        propOperaValue.value_double = m_doubleManager->value(property);
+        propOperaValue.value_float  = propOperaValue.value_double;  
+        propOpera = CHANGE_PLAY_SPEED;     
     }
     emit updatePropertyOperation(propOpera,propOperaValue);
 }

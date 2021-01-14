@@ -104,7 +104,7 @@ public:
          DETAIL_ITEM};
 public:
     explicit QTagTreeWidget(QWidget *parent = 0);
-    ~QTagTreeWidget();
+    virtual ~QTagTreeWidget();
 public:
     void Init();
     void InitSignalAndSlot();

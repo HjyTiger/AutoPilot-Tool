@@ -101,6 +101,9 @@ public:
 private:
     /* private functions*/
     //initiate Main UI
+    void InitConfig();
+    void SaveConfig();
+    void InitWindow();
     void InitDock();
     void removeAllDock();
 
@@ -135,6 +138,9 @@ private:
                            const QString & iconPath,
                            int width_icon,
                            int height_icon);
+    void insertDataPlotCell(std::shared_ptr<QDataPlotWidget>  sp_data_plot_cell,
+                            QDataPlotWidget                 * pre_plot_cell = nullptr
+                            );
     void clearAllDataPlot();
 private slots:
     /* status bar slot*/
@@ -191,6 +197,7 @@ private slots:
     void OnAddNewDataPlotWindow(QDataPlotWidget *);
     void OnRemoveDataPlotWindow(QDataPlotWidget *);
 private:
+    tool::Tool_Config *       config_;
     tool::DataManager *       m_dataManager;
     tool::ThreadManager       m_threadManager;
     tool::PlayProcess  *      m_pPlayProcess;
@@ -202,7 +209,7 @@ private:
     QList<QTreeWidgetItem*>     m_SettingItemList;
     QList<std::shared_ptr<QDataPlotWidget> > m_dataPlotWindow_List;
     QString                     m_iconDir;
-    QtAbstractPropertyBrowser * m_propertyBrowser;
+    QOptionPropertyBrowser *    m_propertyBrowser;
     QMessageSendBrowser *       m_messageSendBrowser;
     
     TagSelectDialog          *  m_tagSelectDialog;

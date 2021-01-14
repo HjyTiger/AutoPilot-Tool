@@ -55,6 +55,7 @@
 #include <QMetaType>
 #include <QList>
 #include <QTimer>
+#include "Model/Model_Config.h"
 #include "Model/Model_DataManager.h"
 #include "Model/Model_Constants.h"
 #include "Model/IssueTag.hpp"
@@ -110,8 +111,8 @@ enum LOGGER_MODE
 
 enum LogMode{
     CUT_BY_TIME_DURATION,
-    CUT_BY_EVENT_NUM,
-    CUT_BY_BYTE_SIZE
+    CUT_BY_BYTE_SIZE,
+    CUT_BY_EVENT_NUM
 };
 
 enum RecordMode{
@@ -142,6 +143,11 @@ public:
     int64_t pauseSaveEvents();
     int64_t stopSaveEvents();
 
+    void set_Config(tool::Logger_Config * logger_config);
+    void save_Config();
+    tool::Logger_Config * get_Config(){
+        return config_;
+    }
 
     void setLogDir(const QString & slogDir){
         m_sLogDir = slogDir;
@@ -151,11 +157,29 @@ public:
     }
     void setLogName(const QString & slogName){
         m_sLogName = slogName;
+        QStringList qstr_list = m_sLogName.split(QRegExp("[, _ -]+"));
+        if(qstr_list.size() > 0){
+            m_sLogTitleName = qstr_list[0];
+        }else{
+            m_sLogTitleName = QString("Log");
+        }
     }
     QString getLogName(){
         return m_sLogName;
     }
 
+    void setRecordName(const QString & record_name){
+        m_sRecordName = record_name;
+        QStringList qstr_list = m_sRecordName.split(QRegExp("[, _ -]+"));
+        if(qstr_list.size() > 0){
+            m_sRecordTitleName = qstr_list[0];
+        }else{
+            m_sRecordTitleName = QString("Record");
+        }
+    }
+    QString getRecordName(){
+        return m_sRecordName;
+    }
 
     int64_t saveRecordEvents(std::vector<IssueTag *> & issueTags);
     // int64_t startRecordEvents();
@@ -194,6 +218,7 @@ public:
     }
     void setRecordEventNum(int nRecordEventNum){
         m_nRecordEventNum = nRecordEventNum;
+
     }
     void setRecordBytes(long int nRecordBytes){
         m_nRecordBytes = nRecordBytes;
@@ -203,6 +228,7 @@ private:
     void recordEventsToFile(LogFileStatus logfilestatus);
     void pushEventIntoRecordQueue(std::shared_ptr<LCM_LogEventWrap> sp_eventWrap);
 private:
+    tool::Logger_Config * config_;
     std::atomic_bool    m_isLoggerWork;
 
     DataManager *       m_dataManager;
@@ -243,6 +269,9 @@ private:
     QTimer              m_qTimer;
     QString             m_sLogDir;
     QString             m_sLogName;
+    QString             m_sLogTitleName; //m_sLogName removed timestamp
+    QString             m_sRecordName;
+    QString             m_sRecordTitleName; //m_sRecordName removed timestamp
 signals:
     //void startRecordEventsSignal(LogFileStatus);
     void saveStatusSignal(LogFileStatus);

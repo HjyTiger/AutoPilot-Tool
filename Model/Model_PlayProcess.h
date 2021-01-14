@@ -54,6 +54,7 @@
 #include <QMessageBox>
 #include <QMetaType>
 #include <lcm/lcm-cpp.hpp>
+#include "Model/Model_Constants.h"
 #include "Model/ThreadSafe_STL/thread_safe_queue.h"
 #include "Model/ThreadSafe_STL/thread_safe_vector.h"
 #include "Model/IssueTag.hpp"
@@ -113,13 +114,19 @@ public:
     ~PlayProcess();
 public:
     bool Init();
-    
+
     bool connectDataManager(DataManager * pDataManager);
     bool disconnectDataManager();
 
     void StartWork();
     void StopWork();
-    
+
+    void set_Config(tool::Player_Config * player_config);
+    void save_Config();
+    tool::Player_Config * get_Config(){
+        return config_;
+    }
+
     //return current logfile index in list
     bool LoadLogFile(const std::string & logFilePath);
     bool SetLogFilePath(const std::string & logFilePath);
@@ -168,6 +175,7 @@ private:
     std::shared_ptr<LCM_LogEventWrap> getNextLogEvent();
     std::shared_ptr<LCM_LogEventWrap> getPreviousLogEvent();
 private:
+    tool::Player_Config * config_;
     std::atomic_bool    m_isPLayerWork;
 
     lcm::LCM *          m_pLCM;

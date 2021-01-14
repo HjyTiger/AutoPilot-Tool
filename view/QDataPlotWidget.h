@@ -60,6 +60,7 @@
 #include <QHBoxLayout>
 #include <QInputDialog>
 #include <QDockWidget> 
+#include "Model/Model_Config.h"
 #include "Model/Model_Common.h"
 #include "Model/Model_DataManager.h"
 #include "view/axistag.h"
@@ -68,18 +69,33 @@
 class QValuePlot{
 public:
     explicit QValuePlot(QPointer<QCPGraph>   graph,
-                        tool::ValueConfig  * valConf);
+                        tool::Value_Config  * valConf);
+    explicit QValuePlot(QPointer<QCPGraph>   graph);
+    // explicit QValuePlot(QCPGraph * graph,
+    //                     tool::Value_Config  * valConf);
+    // explicit QValuePlot(QCPGraph * graph);
     ~QValuePlot();
 public:
+    void set_Config(tool::Value_Config * val_config);
+    tool::Value_Config * get_Config(){
+        return config_;
+    }
+    QCPGraph * graph();
+    void setColor(QColor color);
+    void setScatterStyle(QString qstr_scatter_style);
+    void setLineStyle(QString qstr_line_style);
     void addData(double key, double value);
     void adjustValueGraph();
-    tool::ValueConfig  * valueConfig(){
-        return m_valConfig;
-    }
 public:
+    tool::Value_Config *      config_;
     QPointer<QCPGraph>        m_graph;
     std::shared_ptr<AxisTag>  m_tag;
-    tool::ValueConfig  *      m_valConfig;
+    bool                      is_fix_plot_range_;
+    double                    plot_range_lower_;
+    double                    plot_range_upper_;
+    QColor                    color_;
+    float                     widthF_;
+    int                       padding_;
     double                    m_curKey;
     double                    m_curValue;
     double                    m_count;
@@ -91,8 +107,13 @@ class QMessagePlot : QWidget
 {
 public:
     QMessagePlot();
-    ~QMessagePlot();
+    virtual ~QMessagePlot();
 public:
+    void set_Config(tool::Information_Config * info_config);
+    tool::Information_Config * get_Config(){
+        return config_;
+    }
+
     void addVaule(const QString & valueName,
                   double          key,
                   double          value);
@@ -103,6 +124,7 @@ public:
     }
     void adjustMessageGraphs();
 public:
+    tool::Information_Config * config_;
     std::map<QString, std::shared_ptr<QValuePlot> > m_values_Map;
     double m_curKey;
 };
@@ -112,11 +134,14 @@ class QDataPlotWidget : public QWidget
     Q_OBJECT
 public:
     QDataPlotWidget(QWidget* parent = 0);
-    ~QDataPlotWidget();
+    virtual ~QDataPlotWidget();
 public:
-    void initViewLayout();
-    void initSignalAndSlots();
     void initMessagePlot();
+    void set_Config(tool::PlotCell_Config * plotcell_config);
+    tool::PlotCell_Config * get_Config(){
+        return config_;
+    }
+    void clear_Config();
     bool connectDataManager(tool::DataManager * p_dataManager);
     bool disconnectDataManager();
     void clearData();
@@ -129,16 +154,17 @@ public:
     void addMessageValueGraph(tool::Information & info,
                               const QString     & valName);
 private:
+    void initViewLayout();
+    void initSignalAndSlots();
     bool isSameValueAxis(QList<QCPGraph*> graphs);
     inline double Maximum(double first, double second);
     inline double Minimum(double first, double second);
-    void setGraphs_ScatterShape(QList<QCPGraph*> & graphs,QCPScatterStyle::ScatterShape scatterShape);
-    void setGraphs_LineStyle(QList<QCPGraph*> & graphs,QCPGraph::LineStyle lineStyle);
+    void getSelectValuePlots(std::vector<QValuePlot *> & val_plot_vec);
 private:
+    tool::PlotCell_Config *  config_;
     tool::DataManager     *  m_dataManager;
     std::atomic_bool         m_isDataManagerConnected;
     std::atomic_bool         m_bPauseReplot;
-    std::atomic_bool         m_bMultiAxis;
     QCustomPlot * m_Plot;
     QVBoxLayout * m_vertViewLayout;
     QHBoxLayout * m_horButtonsLayout;
@@ -151,6 +177,8 @@ private:
     QMenu * m_menu;
 
     std::map<QString,std::shared_ptr<QMessagePlot> >  m_msgPlot_Map;
+    QStringList plot_scatter_shape_types_;
+    QStringList plot_line_style_types_;
 
     double m_fCurrentTime;
 signals:
@@ -190,101 +218,11 @@ private slots:
     void plotPause();
     void plotPlay();
 
-    void setSelectedGraph_ScatterShape_None(){
-        QList<QCPGraph*> selectGraphs = m_Plot->selectedGraphs();
-        setGraphs_ScatterShape(selectGraphs,QCPScatterStyle::ssNone);
-    }
-    void setSelectedGraph_ScatterShape_Dot(){
-        QList<QCPGraph*> selectGraphs = m_Plot->selectedGraphs();
-        setGraphs_ScatterShape(selectGraphs,QCPScatterStyle::ssDot);
-    }
-    void setSelectedGraph_ScatterShape_Cross (){
-        QList<QCPGraph*> selectGraphs = m_Plot->selectedGraphs();
-        setGraphs_ScatterShape(selectGraphs,QCPScatterStyle::ssCross);
-    }
-    void setSelectedGraph_ScatterShape_Plus(){
-        QList<QCPGraph*> selectGraphs = m_Plot->selectedGraphs();
-        setGraphs_ScatterShape(selectGraphs,QCPScatterStyle::ssPlus);
-    }
-    void setSelectedGraph_ScatterShape_Circle(){
-        QList<QCPGraph*> selectGraphs = m_Plot->selectedGraphs();
-        setGraphs_ScatterShape(selectGraphs,QCPScatterStyle::ssCircle);
-    }
-    void setSelectedGraph_ScatterShape_Disc(){
-        QList<QCPGraph*> selectGraphs = m_Plot->selectedGraphs();
-        setGraphs_ScatterShape(selectGraphs,QCPScatterStyle::ssDisc);
-    }
-    void setSelectedGraph_ScatterShape_Square(){
-        QList<QCPGraph*> selectGraphs = m_Plot->selectedGraphs();
-        setGraphs_ScatterShape(selectGraphs,QCPScatterStyle::ssSquare);
-    }
-    void setSelectedGraph_ScatterShape_Diamond(){
-        QList<QCPGraph*> selectGraphs = m_Plot->selectedGraphs();
-        setGraphs_ScatterShape(selectGraphs,QCPScatterStyle::ssDiamond);
-    }
-    void setSelectedGraph_ScatterShape_Star(){
-        QList<QCPGraph*> selectGraphs = m_Plot->selectedGraphs();
-        setGraphs_ScatterShape(selectGraphs,QCPScatterStyle::ssStar);
-    }
-    void setSelectedGraph_ScatterShape_Triangle(){
-        QList<QCPGraph*> selectGraphs = m_Plot->selectedGraphs();
-        setGraphs_ScatterShape(selectGraphs,QCPScatterStyle::ssTriangle);
-    }
-    void setSelectedGraph_ScatterShape_TriangleInverted(){
-        QList<QCPGraph*> selectGraphs = m_Plot->selectedGraphs();
-        setGraphs_ScatterShape(selectGraphs,QCPScatterStyle::ssTriangleInverted);
-    }
-    void setSelectedGraph_ScatterShape_CrossSquare(){
-        QList<QCPGraph*> selectGraphs = m_Plot->selectedGraphs();
-        setGraphs_ScatterShape(selectGraphs,QCPScatterStyle::ssCrossSquare);
-    }
-    void setSelectedGraph_ScatterShape_PlusSquare(){
-        QList<QCPGraph*> selectGraphs = m_Plot->selectedGraphs();
-        setGraphs_ScatterShape(selectGraphs,QCPScatterStyle::ssPlusSquare);
-    }
-    void setSelectedGraph_ScatterShape_CrossCircle(){
-        QList<QCPGraph*> selectGraphs = m_Plot->selectedGraphs();
-        setGraphs_ScatterShape(selectGraphs,QCPScatterStyle::ssCrossCircle);
-    }
-    void setSelectedGraph_ScatterShape_PlusCircle(){
-        QList<QCPGraph*> selectGraphs = m_Plot->selectedGraphs();
-        setGraphs_ScatterShape(selectGraphs,QCPScatterStyle::ssPlusCircle);
-    }
-    void setSelectedGraph_ScatterShape_Peace(){
-        QList<QCPGraph*> selectGraphs = m_Plot->selectedGraphs();
-        setGraphs_ScatterShape(selectGraphs,QCPScatterStyle::ssPeace);
-    }
-    void setSelectedGraph_ScatterShape_Pixmap(){
-        QList<QCPGraph*> selectGraphs = m_Plot->selectedGraphs();
-        setGraphs_ScatterShape(selectGraphs,QCPScatterStyle::ssPixmap);
-    }
+    void setSelectedGraph_PlotRange();
+    void setSelectedGraph_PlotRange_Unfix();
 
-
-    void setSelectedGraph_LineStyle_None(){
-        QList<QCPGraph*> selectGraphs = m_Plot->selectedGraphs();
-        setGraphs_LineStyle(selectGraphs,QCPGraph::lsNone);
-    }
-
-    void setSelectedGraph_LineStyle_Line(){
-        QList<QCPGraph*> selectGraphs = m_Plot->selectedGraphs();
-        setGraphs_LineStyle(selectGraphs,QCPGraph::lsLine);
-    }
-    void setSelectedGraph_LineStyle_StepLeft(){
-        QList<QCPGraph*> selectGraphs = m_Plot->selectedGraphs();
-        setGraphs_LineStyle(selectGraphs,QCPGraph::lsStepLeft);
-    }
-    void setSelectedGraph_LineStyle_StepRight(){
-        QList<QCPGraph*> selectGraphs = m_Plot->selectedGraphs();
-        setGraphs_LineStyle(selectGraphs,QCPGraph::lsStepRight);
-    }
-    void setSelectedGraph_LineStyle_StepCenter(){
-        QList<QCPGraph*> selectGraphs = m_Plot->selectedGraphs();
-        setGraphs_LineStyle(selectGraphs,QCPGraph::lsStepCenter);
-    }
-    void setSelectedGraph_LineStyle_Impulse(){
-        QList<QCPGraph*> selectGraphs = m_Plot->selectedGraphs();
-        setGraphs_LineStyle(selectGraphs,QCPGraph::lsImpulse);
-    }
+    void setSelectedGraph_ScatterShape();
+    void setSelectedGraph_LineStyle();
 };
 
 Q_DECLARE_METATYPE(QDataPlotWidget *)

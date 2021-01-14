@@ -56,6 +56,7 @@
 namespace tool{
 /* construct and destruct*/
 LogProcess::LogProcess(QObject     * parent):
+    config_(nullptr),
     m_nCurrentTimestamp(0),
     m_nStartRecordTime(0),
     m_nCurrentTimeDuration(0),
@@ -200,13 +201,64 @@ int64_t LogProcess::stopSaveEvents(){
     }
 }
 
+void LogProcess::set_Config(tool::Logger_Config * logger_config){
+    if(logger_config != nullptr){
+        config_ = logger_config;
+        setLogMode(config_->log_constrain_type_);
+        setLogTimeDuration(static_cast<int64_t>(config_->log_constrain_value_ * 1000000)); //s to us
+        setLogEventNum(static_cast<int>(config_->log_constrain_value_));
+        setLogBytes(static_cast<long int>(config_->log_constrain_value_ * 1048576)); //Mb to b
+
+        setRecordMode(config_->record_mode_);
+        setRecordTimeDuration(static_cast<int64_t>(config_->record_value_ * 1000000)); //s to us
+        setRecordEventNum(static_cast<int>(config_->record_value_));
+        setRecordBytes(static_cast<long int>(config_->record_value_ * 1048576)); //Mb to b
+    }else{
+        /* do nothing*/
+    }
+}
+
+void LogProcess::save_Config(){
+    if(config_ != nullptr){
+        config_->log_constrain_type_ = m_logMode;
+        switch(m_logMode){
+            case CUT_BY_TIME_DURATION:
+                config_->log_constrain_value_ = static_cast<float>(m_nLogTimeDuration/1000000); //us to s
+                break;
+            case CUT_BY_EVENT_NUM:
+                config_->log_constrain_value_ = static_cast<float>(m_nLogEventNum);
+                break;
+            case CUT_BY_BYTE_SIZE:
+                config_->log_constrain_value_ = static_cast<float>(m_nLogBytes/1048576); //b to mb
+                break;
+        }
+        config_->record_mode_ = m_recordMode;
+        switch (m_recordMode)
+        {
+        case ACCORDING_TIME_DURATION:
+            config_->record_value_ = static_cast<float>(m_nRecordTimeDuration/1000000); //us to s
+            break;
+        case ACCORDING_EVENT_NUM:
+            config_->record_value_ = static_cast<float>(m_nRecordEventNum);
+            break;
+        case ACCORDING_BYTE_SIZE:
+            config_->record_value_ = static_cast<float>(m_nRecordBytes/1048576); //b to mb
+            break;        
+        default:
+            break;
+        }
+    }else{
+        /* do nothing*/
+    }
+}
+
 int64_t LogProcess::saveRecordEvents(std::vector<IssueTag *> & issueTags){
         LogFileStatus logfileStatus;
         logfileStatus.clear();
         std::string sSuf(".log");
         std::string sTimeStamp = GetCurrentDateTimeString();
         logfileStatus.sLogfileDir     = m_sLogDir.toStdString();
-        logfileStatus.sLogfileName    = m_sLogName.toStdString(); 
+        logfileStatus.sLogfileName    = m_sRecordName.toStdString(); 
         logfileStatus.nStartTimeStamp = GetGlobalTimeStampInMicroSec();
         logfileStatus.m_tags          = issueTags;
         if (!(m_sLogDir.isNull() || m_sLogDir.isEmpty())){
@@ -312,7 +364,7 @@ bool LogProcess::writeIssueTag(IssueTag & issuetag){
 //     return true;
 // }
 
-void LogProcess::saveEventsToFile(){
+void LogProcess:: saveEventsToFile(){
     std::string sSuf(".log");
     std::string sTimeStamp = GetCurrentDateTimeString();
     m_logFileStatus.clear();
@@ -329,6 +381,7 @@ void LogProcess::saveEventsToFile(){
         m_pLCMLogFile = NULL;
         return;
     }else{
+        emit saveStatusSignal(m_logFileStatus);
     }
     m_isSaveLogFinished.store(false);
     m_dataManager->isShowDataStatus.store(false);
@@ -353,9 +406,9 @@ void LogProcess::saveEventsToFile(){
                     m_logFileStatus.nLastEventTimeStamp    = m_logFileStatus.nCurrentEventTimeStamp;
                     m_logFileStatus.nCurrentEventTimeStamp = sp_logEvent->wrapTimeStamp();
                     m_logFileStatus.nMsgNumber++;
-                    if(m_logFileStatus.nMsgNumber == 1){
-                        m_logFileStatus.nStartTimeStamp = m_logFileStatus.nCurrentEventTimeStamp;
-                    }else{/**/}
+                    // if(m_logFileStatus.nMsgNumber == 1){
+                    //     m_logFileStatus.nStartTimeStamp = m_logFileStatus.nCurrentEventTimeStamp;
+                    // }else{/**/}
                     static long int cumulateBytes(sp_logEvent->event()->datalen);
                     static long int timeStampPoint(sp_logEvent->event()->timestamp);
                     if(abs(m_logFileStatus.nCurrentEventTimeStamp - timeStampPoint > 1000000) ||
@@ -396,6 +449,7 @@ void LogProcess::saveEventsToFile(){
             }
             //cut log file
             if(isCutlog){
+                isCutlog = false;
                 if (NULL !=  m_pLCMLogFile){
                     //close the file;
                     delete m_pLCMLogFile;
@@ -405,9 +459,12 @@ void LogProcess::saveEventsToFile(){
                 }
                 sTimeStamp = GetCurrentDateTimeString();
                 m_logFileStatus.clear();
-                m_logFileStatus.sLogfileDir  = m_sLogDir.toStdString();
-                m_logFileStatus.sLogfileName = m_sLogName.toStdString(); 
                 m_logFileStatus.nStartTimeStamp = GetGlobalTimeStampInMicroSec();
+                m_logFileStatus.sLogfileDir  = m_sLogDir.toStdString();
+                QString log_file_name = m_sLogTitleName + QString("_") 
+                                        + QString::fromStdString(GetCurrentDateTimeString())
+                                        + QString(".log");
+                m_logFileStatus.sLogfileName = log_file_name.toStdString(); 
                 if (!(m_sLogDir.isNull() || m_sLogDir.isEmpty())){
                     m_logFileStatus.sLogfilePath = m_sLogDir.toStdString() + "/" + m_logFileStatus.sLogfileName;
                 }else{
@@ -420,6 +477,7 @@ void LogProcess::saveEventsToFile(){
                     m_pLCMLogFile = NULL;
                     return;
                 }else{
+                    emit saveStatusSignal(m_logFileStatus);
                 }
             }else{}
         }else{

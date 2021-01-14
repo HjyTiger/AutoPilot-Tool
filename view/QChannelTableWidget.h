@@ -50,6 +50,7 @@
 #include <string>
 #include <QObject>
 #include <QTableWidget>
+#include "Model/Model_Config.h"
 #include "Model/Model_DataManager.h"
 
 
@@ -58,8 +59,12 @@ class QChanneltableWidget: public QTableWidget
     Q_OBJECT
 public:
     explicit QChanneltableWidget(QWidget *parent = 0);
-    ~QChanneltableWidget();
+    virtual ~QChanneltableWidget();
 public:
+    void set_Config(tool::ChannelWindow_Config * chnl_win_config);
+    tool::ChannelWindow_Config * get_Config(){
+        return config_;
+    }
     bool connectDataManager(tool::DataManager * p_dataManager);
     bool disconnectDataManager();
     int getIndex(const std::string & name);
@@ -67,6 +72,7 @@ public:
 private:
     void showChannelInfo(int index,tool::Information & info);
 private:
+    tool::ChannelWindow_Config * config_;
     tool::DataManager     *    m_dataManager;
     std::atomic_bool           m_isDataManagerConnected;
     std::map<std::string,int>  m_channel_index;

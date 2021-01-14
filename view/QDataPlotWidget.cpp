@@ -43,31 +43,154 @@
 * Date: 2020.12.24                                                           **
 * Version: 1.0.0                                                             **
 ******************************************************************************/
-
+#include "view/QDataPlotWidget.h"
 #include <algorithm>
 #include <iostream>
+#include <QRegExp> 
 #include "Model/Model_Common.h"
-#include "view/QDataPlotWidget.h"
 
 QValuePlot::QValuePlot(QPointer<QCPGraph>   graph,
-                       tool::ValueConfig  * valConf):
+                       tool::Value_Config  * val_conf):
+    config_(nullptr),
+    is_fix_plot_range_(false),
+    plot_range_lower_(0.0),plot_range_upper_(0.0),
+    color_(255,0,0),widthF_(3.0),padding_(10),
     m_curKey(0.0),m_delta(0.0),m_count(0.0){
-    m_graph     = graph;
-    m_valConfig = valConf;
+    m_graph  = graph;
     m_tag.reset(new AxisTag(m_graph->valueAxis()));
-    m_tag->setPen(m_graph->pen());
-    QPen graphPen(m_valConfig->m_color);
-    graphPen.setWidthF(m_valConfig->m_widthF);
-    graph->setPen(graphPen);
-    if(m_valConfig->m_isFixPlotRange){
-      graph->valueAxis()->setRange(m_valConfig->m_plot_range_lower,m_valConfig->m_plot_range_upper);
-    }else{
-      /* do nothing*/
-    }
+    set_Config(val_conf);
 }
 
+// QValuePlot::QValuePlot(QCPGraph            * graph,
+//                        tool::Value_Config  * val_conf):
+//     config_(nullptr),
+//     is_fix_plot_range_(false),
+//     plot_range_lower_(0.0),plot_range_upper_(0.0),
+//     color_(255,0,0),widthF_(3.0),padding_(10),
+//     m_curKey(0.0),m_delta(0.0),m_count(0.0){
+//     m_graph  = graph;
+//     m_tag.reset(new AxisTag(m_graph->valueAxis()));
+//     set_Config(val_conf);
+// }
+
+QValuePlot::QValuePlot(QPointer<QCPGraph> graph):
+    config_(nullptr),
+    m_curKey(0.0),m_delta(0.0),m_count(0.0){
+    m_graph     = graph;
+    m_tag.reset(new AxisTag(m_graph->valueAxis()));
+}
+
+// QValuePlot::QValuePlot(QCPGraph * graph):
+//     config_(nullptr),
+//     m_curKey(0.0),m_delta(0.0),m_count(0.0){
+//     m_graph     = graph;
+//     m_tag.reset(new AxisTag(m_graph->valueAxis()));
+// }
+
 QValuePlot::~QValuePlot(){
-    
+}
+
+void QValuePlot::set_Config(tool::Value_Config * val_config){
+    if(val_config != nullptr){
+      config_ = val_config;
+      is_fix_plot_range_ = config_->is_fix_plot_range_;
+      plot_range_lower_  = config_->plot_range_lower_;
+      plot_range_upper_  = config_->plot_range_upper_;
+      color_             = config_->color_;
+      widthF_            = config_->widthF_;
+      padding_           = config_->padding_;
+    }else{
+      /* go on*/
+    }
+    QPen graphPen(color_);
+    graphPen.setWidthF(widthF_);
+    m_graph->setPen(graphPen);
+    m_tag->setPen(m_graph->pen());
+    if(config_->is_fix_plot_range_){
+        m_graph->valueAxis()->setRange(plot_range_lower_,plot_range_upper_);
+    }else{
+      m_graph->rescaleValueAxis(false, true);
+      if(m_graph->data()->size()>1){
+        m_graph->valueAxis()->setRange(m_graph->valueAxis()->range().lower, m_graph->valueAxis()->range().upper);
+      }
+      else if(m_graph->data()->size() == 1){/* do nothing*/}
+    }
+    setScatterStyle(QString::fromStdString(config_->scatter_style_));
+    setLineStyle(QString::fromStdString(config_->line_style));
+}
+
+QCPGraph * QValuePlot::graph(){
+  return m_graph.data();
+}
+
+void QValuePlot::setColor(QColor color){
+    QPen graph_pen = m_graph->pen();
+    graph_pen.setColor(color);
+    m_graph->setPen(graph_pen);
+    m_tag->setPen(m_graph->pen());
+    if(config_ != nullptr){
+      config_->color_ = color;
+    }else{/* do nothing*/}
+}
+
+void QValuePlot::setScatterStyle(QString qstr_scatter_style){
+    QCPScatterStyle::ScatterShape scatterShape;
+    if(qstr_scatter_style.compare(QString("None")) == 0){
+      scatterShape = QCPScatterStyle::ssNone;
+    }else if(qstr_scatter_style.compare(QString("Dot")) == 0){
+      scatterShape = QCPScatterStyle::ssDot;
+    }else if(qstr_scatter_style.compare(QString("Cross")) == 0){
+      scatterShape = QCPScatterStyle::ssCross;
+    }else if(qstr_scatter_style.compare(QString("Plus")) == 0){
+      scatterShape = QCPScatterStyle::ssPlus;
+    }else if(qstr_scatter_style.compare(QString("Circle")) == 0){
+      scatterShape = QCPScatterStyle::ssCircle;
+    }else if(qstr_scatter_style.compare(QString("Disc")) == 0){
+      scatterShape = QCPScatterStyle::ssDisc;
+    }else if(qstr_scatter_style.compare(QString("Square")) == 0){
+      scatterShape = QCPScatterStyle::ssSquare;
+    }else if(qstr_scatter_style.compare(QString("Diamond")) == 0){
+      scatterShape = QCPScatterStyle::ssDiamond;
+    }else if(qstr_scatter_style.compare(QString("Star")) == 0){
+      scatterShape = QCPScatterStyle::ssStar;
+    }else if(qstr_scatter_style.compare(QString("Triangle")) == 0){
+      scatterShape = QCPScatterStyle::ssTriangle;
+    }else if(qstr_scatter_style.compare(QString("TriangleInverted")) == 0){
+      scatterShape = QCPScatterStyle::ssTriangleInverted;
+    }else if(qstr_scatter_style.compare(QString("CrossSquare")) == 0){
+      scatterShape = QCPScatterStyle::ssCrossSquare;
+    }else if(qstr_scatter_style.compare(QString("PlusSquare")) == 0){
+      scatterShape = QCPScatterStyle::ssPlusSquare;
+    }else if(qstr_scatter_style.compare(QString("CrossCircle")) == 0){
+      scatterShape = QCPScatterStyle::ssCrossCircle;
+    }else if(qstr_scatter_style.compare(QString("PlusCircle")) == 0){
+      scatterShape = QCPScatterStyle::ssPlusCircle;
+    }else if(qstr_scatter_style.compare(QString("Peace")) == 0){
+      scatterShape = QCPScatterStyle::ssPeace;
+    }else if(qstr_scatter_style.compare(QString("Pixmap")) == 0){
+      scatterShape = QCPScatterStyle::ssPixmap;
+    }
+    m_graph->setScatterStyle(QCPScatterStyle(scatterShape));
+    config_->scatter_style_ = qstr_scatter_style.toStdString();
+}
+
+void QValuePlot::setLineStyle(QString qstr_line_style){
+  QCPGraph::LineStyle lineStyle;
+  if(qstr_line_style.compare(QString("None")) == 0){
+    lineStyle = QCPGraph::lsNone;
+  }else if(qstr_line_style.compare(QString("Line")) == 0){
+    lineStyle = QCPGraph::lsLine;
+  }else if(qstr_line_style.compare(QString("StepLeft")) == 0){
+    lineStyle = QCPGraph::lsStepLeft;
+  }else if(qstr_line_style.compare(QString("StepRight")) == 0){
+    lineStyle = QCPGraph::lsStepRight;
+  }else if(qstr_line_style.compare(QString("StepCenter")) == 0){
+    lineStyle = QCPGraph::lsStepCenter;
+  }else if(qstr_line_style.compare(QString("Impulse")) == 0){
+    lineStyle = QCPGraph::lsImpulse;
+  }
+  m_graph->setLineStyle(lineStyle);
+  config_->line_style = qstr_line_style.toStdString();
 }
 
 void QValuePlot::addData(double key, double value){
@@ -89,7 +212,7 @@ void QValuePlot::adjustValueGraph(){
   m_tag->updatePosition(m_curValue);
   m_tag->setText(QString::number(m_curValue, 'f', 2));
   //m_Plot->xAxis->rescale();
-  if(!m_valConfig->m_isFixPlotRange){
+  if(!config_->is_fix_plot_range_){
     m_graph->rescaleValueAxis(false, true);
     if(m_graph->data()->size()>1){
       m_graph->valueAxis()->setRange(m_graph->valueAxis()->range().lower, m_graph->valueAxis()->range().upper);
@@ -98,10 +221,21 @@ void QValuePlot::adjustValueGraph(){
   }else{/* do nothing*/}
 }
 
-QMessagePlot::QMessagePlot(){
+QMessagePlot::QMessagePlot():
+  config_(nullptr)
+{
 }
 
-QMessagePlot::~QMessagePlot(){}
+QMessagePlot::~QMessagePlot(){
+}
+
+void QMessagePlot::set_Config(tool::Information_Config * info_config){
+    if(info_config != nullptr){
+      config_ = info_config;
+    }else{
+      /* do nothing*/
+    }
+}
 
 void QMessagePlot::addVaule(const QString & valueName,
                             double          key,
@@ -130,8 +264,9 @@ void QMessagePlot::adjustMessageGraphs(){
 
 
 QDataPlotWidget::QDataPlotWidget(QWidget* parent):
-    m_bPauseReplot(false),
-    m_bMultiAxis(true)
+    config_(nullptr),
+    m_dataManager(nullptr),
+    m_bPauseReplot(false)
   {
     m_vertViewLayout       = new QVBoxLayout(this);
     m_horButtonsLayout     = new QHBoxLayout();
@@ -169,11 +304,21 @@ QDataPlotWidget::QDataPlotWidget(QWidget* parent):
     m_Plot->yAxis2->setVisible(false);
     m_pReplotTimer = new QTimer(this);
     m_pReplotTimer->start(100);//update the plot every 100ms;
+    plot_scatter_shape_types_ << tr("None") << tr("Dot") << tr("Cross") << tr("Plus")
+                              << tr("Circle") << tr("Disc") << tr("Square") << tr("Diamond")
+                              << tr("Star") << tr("Triangle") << tr("TriangleInverted") << tr("CrossSquare")
+                              << tr("PlusSquare") << tr("CrossCircle") << tr("PlusCircle") << tr("Peace")
+                              << tr("Pixmap");
+    plot_line_style_types_<< tr("None") << tr("Line") << tr("StepLeft")
+                          << tr("StepRight") << tr("StepCenter") << tr("Impulse");
     initViewLayout();
     initSignalAndSlots();
 }
 
 QDataPlotWidget::~QDataPlotWidget(){
+    disconnect(this, 0, 0, 0);
+    m_msgPlot_Map.clear();
+    delete m_pReplotTimer;
     delete m_removeDataPlotButton;
     delete m_addDataPlotButton;
     delete m_addMsgGraphButton;
@@ -230,31 +375,44 @@ void QDataPlotWidget::initMessagePlot(){
       m_dataManager->getAllPlotInfoName(allRegisterNames);
       for(int i = 0;i < allRegisterNames.size();i++){
         const std::string & infoName = allRegisterNames[i];
-        bool isInfoFind(false);
-        tool::Information & info = m_dataManager->pickInfo(infoName,isInfoFind);
-        if(isInfoFind){
-          std::map<std::string,tool::ValueConfig> & val_config_Map = info.m_valuePool.getAllValueConfig();
-          for(std::map<std::string,tool::ValueConfig>::iterator valIter = val_config_Map.begin();
-              valIter != val_config_Map.end();
-              valIter++){
-                const std::string & valName = valIter->first;
-                QString qValStr = QString::fromStdString(valName);
-                const tool::ValueConfig & val_conf = valIter->second;
-                if(val_conf.m_isPlotAtBeginning){
-                  addMessageValueGraph(info,qValStr);
-                }else{
-                  /* go on*/
-                }
-          }
-        }else{
-          /* do nothing*/
-        }
         m_MsgSelectComboBox->addItem(QString::fromStdString(infoName));
+      }
+      if(config_ != nullptr){
+        for(auto info_iter = config_->info_values_map_.begin();
+            info_iter != config_->info_values_map_.end();
+            info_iter++){
+              const std::string & info_name = info_iter->first;
+              bool isInfoFind(false);
+              tool::Information & info = m_dataManager->pickInfo(info_name,isInfoFind);
+              if(isInfoFind &&
+                config_ != nullptr){
+                  tool::Information_Config * info_conf = config_->getInfoConfig(info_name);
+                  if(info_conf != nullptr){
+                    connect(&info, SIGNAL(updateValue(QString,QString,double,double)), this, SLOT(OnUpdateValue(QString,QString,double,double)));
+                    std::vector<std::string> plot_val_names;
+                    config_->get_Info_ValuesName(info_name,plot_val_names);
+                    for(int i = 0;i < plot_val_names.size();i++){
+                        const QString qValStr = QString::fromStdString(plot_val_names[i]);
+                        addMessageValueGraph(info,qValStr);
+                    }
+                  }else{}
+              }else{
+                /* do nothing*/
+              }
+        }
       }
     }else{
       /* do nothing*/
     }
     m_MsgSelectComboBox->setCurrentIndex(-1);
+}
+
+void QDataPlotWidget::set_Config(tool::PlotCell_Config * plotcell_config){
+    if(plotcell_config != nullptr){
+        config_ = plotcell_config;
+    }else{
+        /* do nothing*/
+    }
 }
 
 bool QDataPlotWidget::connectDataManager(tool::DataManager * p_dataManager){
@@ -277,46 +435,54 @@ void QDataPlotWidget::clearData(){
   }
 }
 
-void QDataPlotWidget::addMessageValueGraph(const QString & msgName,
-                                           const QString & valName){
-    std::map<QString,std::shared_ptr<QMessagePlot> >::iterator msgPlotIter = m_msgPlot_Map.find(msgName);
+void QDataPlotWidget::addMessageValueGraph(const QString & msg_name,
+                                           const QString & val_name){
+    std::map<QString,std::shared_ptr<QMessagePlot> >::iterator msgPlotIter = m_msgPlot_Map.find(msg_name);
     std::shared_ptr<QMessagePlot> sp_msgplot;
     if(msgPlotIter != m_msgPlot_Map.end()){
         sp_msgplot = msgPlotIter->second;
     }else{
         sp_msgplot.reset(new QMessagePlot);
-        m_msgPlot_Map.insert(std::pair<QString,std::shared_ptr<QMessagePlot>>(msgName,sp_msgplot));
+        m_msgPlot_Map.insert(std::pair<QString,std::shared_ptr<QMessagePlot>>(msg_name,sp_msgplot));
     }
-    if(sp_msgplot->m_values_Map.find(valName) != sp_msgplot->m_values_Map.end()){
+    if(sp_msgplot->m_values_Map.find(val_name) != sp_msgplot->m_values_Map.end()){
       /* already exist*/
       return;
     }else{
       /* find info color*/
-      std::string infoName = msgName.toStdString();
-      thread_safe::map<std::string,std::shared_ptr<tool::Information> >::iterator infoIter = m_dataManager->m_informationPool_Map.find(infoName);
+      std::string info_name = msg_name.toStdString();
+      thread_safe::map<std::string,std::shared_ptr<tool::Information> >::iterator infoIter = m_dataManager->m_informationPool_Map.find(info_name);
       std::shared_ptr<tool::Information> sp_info;
       if(infoIter != m_dataManager->m_informationPool_Map.end()){
-        //emit subscribeMsgValue(msgName,valName);
-        m_dataManager->OnSubscribeMsgValue(msgName,valName);
-        connect(sp_info.get(), SIGNAL(updateValue(QString,QString,double,double)), this, SLOT(OnUpdateValue(QString,QString,double,double)));
-
         sp_info = infoIter->second;
-        tool::ValueConfig & valConf = sp_info->m_valuePool.getValueConfig(valName.toStdString());
-
+        //emit subscribeMsgValue(msg_name,valName);
+        m_dataManager->OnSubscribeMsgValue(msg_name,val_name);
+        tool::Information_Config * info_config = config_->getInfoConfig(info_name);
+        if(info_config == nullptr){
+          info_config = config_->addInfoConfig(info_name);
+          connect(sp_info.get(), SIGNAL(updateValue(QString,QString,double,double)), this, SLOT(OnUpdateValue(QString,QString,double,double)));
+        }else{/* go on*/}
         int graphIndex = sp_msgplot->m_values_Map.size();
         if(graphIndex > 0){
           m_Plot->axisRect()->addAxis(QCPAxis::atRight);
         }else{}
         int axisIndex = m_Plot->axisRect()->axes().size() - 4; //xaxis xaxis2 yaxis yaxis2
         QPointer<QCPGraph> graph = m_Plot->addGraph(m_Plot->xAxis, m_Plot->axisRect()->axis(QCPAxis::atRight, axisIndex));
-        QString graphName = msgName + "." + valName;
+        QString graphName = msg_name + "." + val_name;
         graph->setName(graphName);
-        QPen graphPen(valConf.m_color);
-        graphPen.setWidthF(valConf.m_widthF);
+        tool::Value_Config * val_conf = info_config->getValConfig(val_name.toStdString());
+        if(val_conf == nullptr){
+          val_conf = info_config->addValConfig(val_name.toStdString());
+        }else{
+          /* do nothing*/
+        }
+        QPen graphPen;
+        graphPen.setColor(val_conf->color_);
+        graphPen.setWidthF(val_conf->widthF_);
         graph->setPen(graphPen);
-        std::shared_ptr<QValuePlot> sp_valPlot(new QValuePlot(graph,&valConf));
-        sp_msgplot->m_values_Map.insert(std::pair<QString,std::shared_ptr<QValuePlot> >(valName,sp_valPlot));
-        m_Plot->axisRect()->axis(QCPAxis::atRight, axisIndex)->setPadding(10); // add some padding to have space for tags
+        std::shared_ptr<QValuePlot> sp_valPlot(new QValuePlot(graph,val_conf));
+        sp_msgplot->m_values_Map.insert(std::pair<QString,std::shared_ptr<QValuePlot> >(val_name,sp_valPlot));
+        m_Plot->axisRect()->axis(QCPAxis::atRight, axisIndex)->setPadding(val_conf->padding_); // add some padding to have space for tags
       }else{
         /* do nothing*/
       }
@@ -327,36 +493,43 @@ void QDataPlotWidget::addMessageValueGraph(const QString & msgName,
 
 void QDataPlotWidget::addMessageValueGraph(tool::Information & info,
                                            const QString     & valName){
-    QString msgName = QString::fromStdString(info.name());
-    std::map<QString,std::shared_ptr<QMessagePlot> >::iterator msgPlotIter = m_msgPlot_Map.find(msgName);
+    std::string val_name  = valName.toStdString();
+    std::string info_name = info.name();
+    QString qmsgName = QString::fromStdString(info_name);
+    std::map<QString,std::shared_ptr<QMessagePlot> >::iterator msgPlotIter = m_msgPlot_Map.find(qmsgName);
     std::shared_ptr<QMessagePlot> sp_msgplot;
     if(msgPlotIter != m_msgPlot_Map.end()){
         sp_msgplot = msgPlotIter->second;
     }else{
         sp_msgplot.reset(new QMessagePlot);
-        m_msgPlot_Map.insert(std::pair<QString,std::shared_ptr<QMessagePlot>>(msgName,sp_msgplot));
+        m_msgPlot_Map.insert(std::pair<QString,std::shared_ptr<QMessagePlot>>(qmsgName,sp_msgplot));
     }
+    tool::Information_Config * info_conf = config_->addInfoConfig(info_name);
+    if(info_conf != nullptr){
+      sp_msgplot->set_Config(info_conf);
+    }else{/**/}
     if(sp_msgplot->m_values_Map.find(valName) != sp_msgplot->m_values_Map.end()){
       /* already exist*/
       return;
     }else{
       /* find value color*/
-      //emit subscribeMsgValue(msgName,valName);
-      m_dataManager->OnSubscribeMsgValue(msgName,valName);
-      connect(&info, SIGNAL(updateValue(QString,QString,double,double)), this, SLOT(OnUpdateValue(QString,QString,double,double)));
-      tool::ValueConfig & valConf = info.m_valuePool.getValueConfig(valName.toStdString());
-
+      //emit subscribeMsgValue(qmsgName,valName);
+      m_dataManager->OnSubscribeMsgValue(qmsgName,valName);
       int graphIndex = m_Plot->graphCount();
       if(graphIndex > 0){
         m_Plot->axisRect()->addAxis(QCPAxis::atRight);
       }else{}
       int axisIndex = m_Plot->axisRect()->axes().size() - 4; //xaxis xaxis2 yaxis yaxis2
       QPointer<QCPGraph> graph = m_Plot->addGraph(m_Plot->xAxis, m_Plot->axisRect()->axis(QCPAxis::atRight, axisIndex));
-      QString graphName = msgName + "." + valName;
+      QString graphName = qmsgName + "." + valName;
       graph->setName(graphName);
-      std::shared_ptr<QValuePlot> sp_valPlot(new QValuePlot(graph,&valConf));
+      std::shared_ptr<QValuePlot> sp_valPlot(new QValuePlot(graph));
       sp_msgplot->m_values_Map.insert(std::pair<QString,std::shared_ptr<QValuePlot> >(valName,sp_valPlot));
-      m_Plot->axisRect()->axis(QCPAxis::atRight, axisIndex)->setPadding(valConf.m_Padding); // add some padding to have space for tags
+      tool::Value_Config * val_conf = config_->addPlotValue(info_name,val_name);
+      if(val_conf != nullptr){
+        sp_valPlot->set_Config(val_conf);
+      }else{/**/}
+      m_Plot->axisRect()->axis(QCPAxis::atRight, axisIndex)->setPadding(val_conf->padding_); // add some padding to have space for tags
     }
     m_Plot->legend->setVisible(true);
     m_Plot->replot();
@@ -380,22 +553,22 @@ bool QDataPlotWidget::isSameValueAxis(QList<QCPGraph*> graphs){
   return true;
 }
 
-void QDataPlotWidget::setGraphs_ScatterShape(QList<QCPGraph*> & graphs,QCPScatterStyle::ScatterShape scatterShape){
-  for(QList<QCPGraph*>::iterator graphIter = graphs.begin();
-      graphIter != graphs.end();
-      graphIter++){
-        QCPGraph * graph = *graphIter;
-        graph->setScatterStyle(QCPScatterStyle(scatterShape));
-  }
-}
-
-void QDataPlotWidget::setGraphs_LineStyle(QList<QCPGraph*> & graphs,QCPGraph::LineStyle lineStyle){
-  for(QList<QCPGraph*>::iterator graphIter = graphs.begin();
-      graphIter != graphs.end();
-      graphIter++){
-        QCPGraph * graph = *graphIter;
-        graph->setLineStyle(lineStyle);
-  }
+void QDataPlotWidget::getSelectValuePlots(std::vector<QValuePlot *> & val_plot_vec){
+  val_plot_vec.clear();
+  for(auto msg_plot_iter = m_msgPlot_Map.begin();
+      msg_plot_iter != m_msgPlot_Map.end();
+      ++msg_plot_iter){
+        for(auto val_plot_iter = msg_plot_iter->second->m_values_Map.begin();
+            val_plot_iter != msg_plot_iter->second->m_values_Map.end();
+            val_plot_iter++){
+              QCPGraph * graph = val_plot_iter->second->graph();
+              QCPPlottableLegendItem *item = m_Plot->legend->itemWithPlottable(graph);
+              if(item->selected() || graph->selected()){
+                item->setSelected(true);
+                val_plot_vec.push_back(val_plot_iter->second.get());
+              }else{/* go on*/}
+        }
+  }  
 }
 
 // void QDataPlotWidget::OnReplotTimeOut()
@@ -471,6 +644,7 @@ void QDataPlotWidget::OnClickedAddMsgGraph(){
   thread_safe::map<std::string,std::shared_ptr<tool::Information> >::iterator infoIter = m_dataManager->m_informationPool_Map.find(infoName);
   if(infoIter != m_dataManager->m_informationPool_Map.end()){
     std::shared_ptr<tool::Information> sp_info = infoIter->second;
+    connect(sp_info.get(), SIGNAL(updateValue(QString,QString,double,double)), this, SLOT(OnUpdateValue(QString,QString,double,double)));
     addMessageValueGraph(*sp_info,valName);
   }else{
     /* no message in dataManager*/
@@ -521,23 +695,31 @@ void QDataPlotWidget::legendDoubleClick(QCPLegend *legend, QCPAbstractLegendItem
   plotPause();
   // Rename a graph by double clicking on its legend item
   Q_UNUSED(legend)
-  if (item) // only react if item was clicked (user could have clicked on border padding of legend where there is no item, then item is 0)
+  if(item) // only react if item was clicked (user could have clicked on border padding of legend where there is no item, then item is 0)
   {
     QCPPlottableLegendItem *plItem = qobject_cast<QCPPlottableLegendItem*>(item);
     QColor selectColor = QColorDialog::getColor(Qt::red,this,"Select  Color");
     // synchronize selection of graphs with selection of corresponding legend items:
-    for (int i=0; i<m_Plot->graphCount(); ++i)
-    {
-        QCPGraph *graph = m_Plot->graph(i);
-        QCPPlottableLegendItem *item = m_Plot->legend->itemWithPlottable(graph);
-        if (item->selected() || graph->selected())
-        {
-            item->setSelected(true);
-            graph->setPen(QPen(selectColor));
-        }else{
-            /*go on*/
-        }
+    std::vector<QValuePlot *> val_plot_vec;
+    getSelectValuePlots(val_plot_vec);
+    for(int i = 0;i < val_plot_vec.size();i++){
+      QValuePlot * val_plot = val_plot_vec[i];
+      val_plot->setColor(selectColor);
     }
+    // for(auto msg_plot_iter = m_msgPlot_Map.begin();
+    //     msg_plot_iter != m_msgPlot_Map.end();
+    //     ++msg_plot_iter){
+    //       for(auto val_plot_iter = msg_plot_iter->second->m_values_Map.begin();
+    //           val_plot_iter != msg_plot_iter->second->m_values_Map.end();
+    //           val_plot_iter++){
+    //             QCPGraph * graph = val_plot_iter->second->graph();
+    //             QCPPlottableLegendItem *item = m_Plot->legend->itemWithPlottable(graph);
+    //             if(item->selected() || graph->selected()){
+    //               item->setSelected(true);
+    //               val_plot_iter->second->setColor(selectColor);
+    //             }else{/* go on*/}
+    //       }
+    // }
     m_Plot->replot();
     plotPlay();
   }
@@ -654,10 +836,10 @@ void QDataPlotWidget::mergeSelectedGraph(){
           std::map<QString, std::shared_ptr<QValuePlot> >::iterator valPlotIter = 
           sp_msgPlot->m_values_Map.find(graphId[1]);
           if(valPlotIter != sp_msgPlot->m_values_Map.end()){
-            tool::ValueConfig  * valconf = valPlotIter->second->valueConfig();
+            tool::Value_Config  * val_conf = valPlotIter->second->get_Config();
             sp_msgPlot->m_values_Map.erase(valPlotIter);
             graph->setValueAxis(mergeAxis);
-            std::shared_ptr<QValuePlot> sp_valPlot(new QValuePlot(graph,valconf));
+            std::shared_ptr<QValuePlot> sp_valPlot(new QValuePlot(graph,val_conf));
             sp_msgPlot->m_values_Map.insert(std::pair<QString,std::shared_ptr<QValuePlot>>(graphId[1],sp_valPlot));
           }else{
             /* do nothing*/
@@ -693,10 +875,10 @@ void QDataPlotWidget::mergeAllGraph(){
       std::map<QString, std::shared_ptr<QValuePlot> >::iterator valPlotIter = 
       sp_msgPlot->m_values_Map.find(graphId[1]);
       if(valPlotIter != sp_msgPlot->m_values_Map.end()){
-        tool::ValueConfig  * valconf = valPlotIter->second->valueConfig();
+        tool::Value_Config  * val_conf = valPlotIter->second->get_Config();
         sp_msgPlot->m_values_Map.erase(valPlotIter);
         graph->setValueAxis(mergeAxis);
-        std::shared_ptr<QValuePlot> sp_valPlot(new QValuePlot(graph,valconf));
+        std::shared_ptr<QValuePlot> sp_valPlot(new QValuePlot(graph,val_conf));
         sp_msgPlot->m_values_Map.insert(std::pair<QString,std::shared_ptr<QValuePlot>>(graphId[1],sp_valPlot));
       }else{
         /* do nothing*/
@@ -750,10 +932,10 @@ void QDataPlotWidget::separateSelectedGraph(){
           std::map<QString, std::shared_ptr<QValuePlot> >::iterator valPlotIter = 
           sp_msgPlot->m_values_Map.find(graphId[1]);
           if(valPlotIter != sp_msgPlot->m_values_Map.end()){
-            tool::ValueConfig  * valconf = valPlotIter->second->valueConfig();
+            tool::Value_Config  * val_conf = valPlotIter->second->get_Config();
             sp_msgPlot->m_values_Map.erase(valPlotIter);
             graph->setValueAxis(m_Plot->axisRect()->addAxis(QCPAxis::atRight));
-            std::shared_ptr<QValuePlot> sp_valPlot(new QValuePlot(graph,valconf));
+            std::shared_ptr<QValuePlot> sp_valPlot(new QValuePlot(graph,val_conf));
             sp_msgPlot->m_values_Map.insert(std::pair<QString,std::shared_ptr<QValuePlot>>(graphId[1],sp_valPlot));
           }else{
             /* do nothing*/
@@ -792,10 +974,10 @@ void QDataPlotWidget::separateAllGraph(){
                       std::map<QString, std::shared_ptr<QValuePlot> >::iterator valPlotIter = 
                       sp_msgPlot->m_values_Map.find(graphId[1]);
                       if(valPlotIter != sp_msgPlot->m_values_Map.end()){
-                        tool::ValueConfig  * valconf = valPlotIter->second->valueConfig();
+                        tool::Value_Config  * val_conf = valPlotIter->second->get_Config();
                         sp_msgPlot->m_values_Map.erase(valPlotIter);
                         graph->setValueAxis(m_Plot->axisRect()->addAxis(QCPAxis::atRight));
-                        std::shared_ptr<QValuePlot> sp_valPlot(new QValuePlot(graph,valconf));
+                        std::shared_ptr<QValuePlot> sp_valPlot(new QValuePlot(graph,val_conf));
                         sp_msgPlot->m_values_Map.insert(std::pair<QString,std::shared_ptr<QValuePlot>>(graphId[1],sp_valPlot));                        
                       }else{
                         /* do nothing*/
@@ -908,39 +1090,21 @@ void QDataPlotWidget::contextMenuRequest(QPoint pos)
     m_menu->addAction("右上", this, SLOT(moveLegend()))->setData((int)(Qt::AlignTop|Qt::AlignRight));
     m_menu->addAction("右下", this, SLOT(moveLegend()))->setData((int)(Qt::AlignBottom|Qt::AlignRight));
     m_menu->addAction("左下", this, SLOT(moveLegend()))->setData((int)(Qt::AlignBottom|Qt::AlignLeft));
-    m_menu->addAction("None", this, SLOT(setSelectedGraph_ScatterShape_None()));
-    m_menu->addAction("Dot", this, SLOT(setSelectedGraph_ScatterShape_Dot()));
-    m_menu->addAction("Cross", this, SLOT(setSelectedGraph_ScatterShape_Cross()));
-    m_menu->addAction("Plus", this, SLOT(setSelectedGraph_ScatterShape_Plus()));
-    m_menu->addAction("Circle", this, SLOT(setSelectedGraph_ScatterShape_Circle()));
-    m_menu->addAction("Disc", this, SLOT(setSelectedGraph_ScatterShape_Disc()));
-    m_menu->addAction("Square", this, SLOT(setSelectedGraph_ScatterShape_Square()));
-    m_menu->addAction("Diamond", this, SLOT(setSelectedGraph_ScatterShape_Diamond()));
-    m_menu->addAction("Star", this, SLOT(setSelectedGraph_ScatterShape_Star()));
-    m_menu->addAction("Triangle", this, SLOT(setSelectedGraph_ScatterShape_Triangle()));
-    m_menu->addAction("TriangleInverted", this, SLOT(setSelectedGraph_ScatterShape_TriangleInverted()));
-    m_menu->addAction("CrossSquare", this, SLOT(setSelectedGraph_ScatterShape_CrossSquare()));
-    m_menu->addAction("PlusSquare", this, SLOT(setSelectedGraph_ScatterShape_PlusSquare()));
-    m_menu->addAction("CrossCircle", this, SLOT(setSelectedGraph_ScatterShape_CrossCircle()));
-    m_menu->addAction("PlusCircle", this, SLOT(setSelectedGraph_ScatterShape_PlusCircle()));
-    m_menu->addAction("Peace", this, SLOT(setSelectedGraph_ScatterShape_Peace()));
-    m_menu->addAction("Pixmap", this, SLOT(setSelectedGraph_ScatterShape_Pixmap()));
+    m_menu->addAction("ScatterShape", this, SLOT(setSelectedGraph_ScatterShape()));
+    m_menu->addAction("LineStyle", this, SLOT(setSelectedGraph_LineStyle()));
   }else  // general context menu on graphs requested
   {
     if(m_Plot->selectedGraphs().size() > 0){
-        m_menu->addAction("LineStyle_None", this, SLOT(setSelectedGraph_LineStyle_None()));
-        m_menu->addAction("LineStyle_Line", this, SLOT(setSelectedGraph_LineStyle_Line()));
-        m_menu->addAction("LineStyle_StepLeft", this, SLOT(setSelectedGraph_LineStyle_StepLeft()));
-        m_menu->addAction("LineStyle_StepRight", this, SLOT(setSelectedGraph_LineStyle_StepRight()));
-        m_menu->addAction("LineStyle_StepCenter", this, SLOT(setSelectedGraph_LineStyle_StepCenter()));
-        m_menu->addAction("LineStyle_Impulse", this, SLOT(setSelectedGraph_LineStyle_Impulse()));
-
+        m_menu->addAction("Fix Plot Range", this, SLOT(setSelectedGraph_PlotRange()));
+        m_menu->addAction("UnFix Plot Range", this, SLOT(setSelectedGraph_PlotRange_Unfix()));
+        m_menu->addAction("ScatterShape", this, SLOT(setSelectedGraph_ScatterShape()));
+        m_menu->addAction("LineStyle", this, SLOT(setSelectedGraph_LineStyle()));
         m_menu->addAction("Merge selected graph", this, SLOT(mergeSelectedGraph()));
         m_menu->addAction("Remove selected graph", this, SLOT(removeSelectedGraph()));
     }else{}
     if(m_Plot->graphCount() > 0){
         m_menu->addAction("Merge All graph", this, SLOT(mergeAllGraph()));
-        m_menu->addAction("Remove all graphs", this, SLOT(removeAllGraphs()));
+        m_menu->addAction("Remove All graphs", this, SLOT(removeAllGraphs()));
     }else{}
     if(m_bPauseReplot.load()){
       m_menu->addAction("Play", this, SLOT(plotPlay()));
@@ -978,4 +1142,89 @@ void QDataPlotWidget::plotPause(){
 
 void QDataPlotWidget::plotPlay(){
   m_bPauseReplot.store(false);
+}
+
+void QDataPlotWidget::setSelectedGraph_PlotRange(){
+    std::vector<QValuePlot *> val_plot_vec;
+    getSelectValuePlots(val_plot_vec);
+    if(val_plot_vec.size() > 0){
+      bool ok;
+      QString qstr_low_up = QInputDialog::getText(this, tr("设置曲线绘制范围"),
+                                                  tr("Plot Range: low,up"), QLineEdit::Normal,
+                                                  QString("-10,10"), &ok);
+      if(ok){
+        QStringList qstr_low_up_list = qstr_low_up.split(QRegExp("[, | ;]+"));
+        if(qstr_low_up_list.size() >= 2){
+          QString qstr_low = qstr_low_up_list[0];
+          double range_low = qstr_low.toDouble();
+          QString qstr_up  = qstr_low_up_list[1];
+          double range_up  = qstr_up.toDouble();
+          for(int i = 0;i < val_plot_vec.size();i++){
+            QValuePlot * val_plot = val_plot_vec[i];
+            tool::Value_Config * val_conf = val_plot->get_Config();
+            val_conf->is_fix_plot_range_ = true;
+            val_conf->plot_range_lower_  = range_low;
+            val_conf->plot_range_upper_  = range_up;
+            val_plot->set_Config(val_conf);
+          }
+        }
+      }
+    }else{
+      /* do nothing*/
+    }
+}
+
+void QDataPlotWidget::setSelectedGraph_PlotRange_Unfix(){
+    std::vector<QValuePlot *> val_plot_vec;
+    getSelectValuePlots(val_plot_vec);
+    if(val_plot_vec.size() > 0){
+      for(int i = 0;i < val_plot_vec.size();i++){
+        QValuePlot * val_plot = val_plot_vec[i];
+        tool::Value_Config * val_conf = val_plot->get_Config();
+        val_conf->is_fix_plot_range_ = false;
+        val_plot->set_Config(val_conf);
+      }
+    }else{
+      /* do nothing*/
+    }  
+}
+
+void QDataPlotWidget::setSelectedGraph_ScatterShape(){
+    std::vector<QValuePlot *> val_plot_vec;
+    val_plot_vec.clear();
+    getSelectValuePlots(val_plot_vec);
+    if(val_plot_vec.empty()){
+      return;
+    }else{/* go on*/}
+    bool ok;
+    QString shape_type = QInputDialog::getItem(this, tr("数据点形状"),
+                                               tr("类型:"), plot_scatter_shape_types_, 0, false, &ok);
+    if(ok){
+      for(int i = 0;i < val_plot_vec.size();i++){
+        QValuePlot * val_plot = val_plot_vec[i];
+        val_plot->setScatterStyle(shape_type);
+      }
+    }else{
+      /* do nothing*/
+    }
+}
+
+void QDataPlotWidget::setSelectedGraph_LineStyle(){
+    std::vector<QValuePlot *> val_plot_vec;
+    val_plot_vec.clear();
+    getSelectValuePlots(val_plot_vec);
+    if(val_plot_vec.empty()){
+      return;
+    }else{/* go on*/}
+    bool ok;
+    QString shape_type = QInputDialog::getItem(this, tr("曲线形状"),
+                                               tr("类型:"), plot_line_style_types_, 0, false, &ok);
+    if(ok){
+      for(int i = 0;i < val_plot_vec.size();i++){
+        QValuePlot * val_plot = val_plot_vec[i];
+        val_plot->setLineStyle(shape_type);
+      }
+    }else{
+      /* do nothing*/
+    }
 }

@@ -56,13 +56,14 @@ MESSAGE(STATUS "current source dir: ${CMAKE_CURRENT_SOURCE_DIR}")
 
 #set include files;
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/
-                    ${CMAKE_CURRENT_SOURCE_DIR}/include/
-                    ${CMAKE_CURRENT_SOURCE_DIR}/view
-                    ${CMAKE_CURRENT_SOURCE_DIR}/view/QtPropertyBrowser
-                    ${CMAKE_CURRENT_SOURCE_DIR}/config
                     ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/x86/include/
                     ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/x86/include/opencv4
                     ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/x86/include/glib-2.0/
+                    ${CMAKE_CURRENT_SOURCE_DIR}/include/
+                    ${CMAKE_CURRENT_SOURCE_DIR}/Communicate
+                    ${CMAKE_CURRENT_SOURCE_DIR}/view
+                    ${CMAKE_CURRENT_SOURCE_DIR}/view/QtPropertyBrowser
+                    ${CMAKE_CURRENT_SOURCE_DIR}/config
                    )
 
 #set include files: *.h, *.hpp;
@@ -80,7 +81,7 @@ FILE(GLOB_RECURSE PROJECT_SOURCES "src/*.cpp"
                                   "Model/*.cc"
                                   "view/*.cc"
                                   "view/*.cpp"
-                                  "Communicate/message/protobuf/sample/*.cc")
+                                  "Communicate/message/protobuf/*.cc")
 #AUX_SOURCE_DIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/src/ PROJECT_SOURCES)
 
 #set library files: *.lib
@@ -138,8 +139,7 @@ if(${CMAKE_BUILD_TYPE} MATCHES "RELEASE")
                           GL 
                           GLU
                           assimp 
-                          3ds
-                          jsoncpp)
+                          3ds)
 
     SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin/Release)
 
@@ -170,8 +170,7 @@ else()
                           GL 
                           GLU
                           assimp 
-                          3ds
-                          jsoncpp)
+                          3ds)
 
     SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin/Debug)
 

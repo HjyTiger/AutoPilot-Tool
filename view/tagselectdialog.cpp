@@ -49,6 +49,35 @@
 #include "Model/Model_Common.h"
 #include <fstream>
 
+void to_json(nlohmann::json & js, const TagsJson & tags_json) {
+    js.clear();
+    js["records"] = tags_json.m_records;
+    for(int i = 0;i < tags_json.m_tags.size();i++){
+        const SelectTag & sele_tag = tags_json.m_tags[i];
+        nlohmann::json j_tag;
+        j_tag["name"] = sele_tag.name;
+        j_tag["detail"] = sele_tag.detail;
+        js["tags"].emplace_back(j_tag);
+    }
+}
+
+void from_json(const nlohmann::json & js, TagsJson & tags_json) {
+    const nlohmann::json & records_js = js.at("records");
+    for(auto it = records_js.begin(); it != records_js.end(); ++it){
+        const nlohmann::json record_js = *it;
+        std::string record_name =record_js.at("name");
+        tags_json.m_records.emplace_back(record_name);
+    }
+    const nlohmann::json & tags_js = js.at("tags");
+    for (auto it = tags_js.begin(); it != tags_js.end(); ++it)
+    {
+        const nlohmann::json tag_js = *it;
+        SelectTag tag;
+        tag.name   = tag_js.at("name");
+        tag.detail = tag_js.at("detail");
+        tags_json.m_tags.emplace_back(tag);
+    }
+}
 
 TagSelectDialog::TagSelectDialog(QWidget *parent) :
     QDialog(parent),
@@ -66,42 +95,18 @@ TagSelectDialog::~TagSelectDialog()
 void TagSelectDialog::LoadTagsJsonFile(const std::string & tagsJsonFile){
 	if (tagsJsonFile.empty()){
 		return ;
+	}else{
+		/* go on*/
 	}
- 
-	Json::Reader reader;
-	Json::Value root;
- 
 	//从文件中读取，保证当前文件有data.json文件
 	std::ifstream jsonFile(tagsJsonFile, std::ios::in);
- 
 	if( !jsonFile.is_open() )  { 
 		return; 
+	}else{
+		/* go on*/
 	}
-
-	if(reader.parse(jsonFile,root)){
-		const Json::Value records = root["records"];
-		int nrec = records.size();
-		m_records.clear();
-		m_records.reserve(nrec);
-		for(int r = 0;r < nrec;r++){
-			Json::Value record = records[r];
-            m_records.push_back(record["name"].asString());			
-		}
-
-        const Json::Value tags = root["tags"];
-		int ns = tags.size();
-		m_tags.clear();
-        m_tags.reserve(ns);
-		for(unsigned int i = 0; i < ns; i++)
-		{
-			Json::Value tag = tags[i];
-            SelectTag  selecTag;
-            selecTag.id = i;
-            selecTag.name = tag["name"].asString();
-            selecTag.detail = tag["detail"].asString();
-            m_tags.push_back(selecTag);
-		}
-	}
+    jsonFile >> m_json;
+    m_tags_json = m_json;
 	jsonFile.close();
 	return ;
 }
@@ -110,8 +115,8 @@ void TagSelectDialog::LoadTagsJsonFile(const std::string & tagsJsonFile){
 void TagSelectDialog::InitRecordButton(){
     ui->buttonBox_Tags->setOrientation(Qt::Vertical);
     ui->buttonBox_Tags->clear();
-    for(int i = 0;i < m_records.size();i++){
-        std::string & recordName = m_records[i];
+    for(int i = 0;i < m_tags_json.m_records.size();i++){
+        std::string & recordName = m_tags_json.m_records[i];
         ui->buttonBox_Tags->addButton(QString::fromStdString(recordName),QDialogButtonBox::AcceptRole);
     }	
 }
@@ -119,8 +124,8 @@ void TagSelectDialog::InitRecordButton(){
 void TagSelectDialog::InitTagButton(){
     ui->buttonBox_Tags->setOrientation(Qt::Vertical);
     ui->buttonBox_Tags->clear();
-    for(int i = 0;i < m_tags.size();i++){
-        SelectTag & selecTag = m_tags[i];
+    for(int i = 0;i < m_tags_json.m_tags.size();i++){
+        SelectTag & selecTag = m_tags_json.m_tags[i];
         ui->buttonBox_Tags->addButton(QString::fromStdString(selecTag.name),QDialogButtonBox::AcceptRole);
     }
 }
@@ -131,15 +136,15 @@ void TagSelectDialog::InitSignalAndSlot(){
 
 void TagSelectDialog::Onclicked(QAbstractButton * button){
 	QString name = button->text();
-	for(int r = 0;r < m_records.size();r++){
-		std::string & record = m_records[r];
+	for(int r = 0;r < m_tags_json.m_records.size();r++){
+		std::string & record = m_tags_json.m_records[r];
 		if(name.compare(QString::fromStdString(record)) == 0){
 			QString logName = name + QString("_") + QString::fromStdString(GetCurrentDateTimeString()) + QString(".log");
 			emit recordName(logName);
 		}		
 	}
-	for(int i = 0;i < m_tags.size();i++){
-		SelectTag & selecTag = m_tags[i];
+	for(int i = 0;i < m_tags_json.m_tags.size();i++){
+		SelectTag & selecTag = m_tags_json.m_tags[i];
 		if(name.compare(QString::fromStdString(selecTag.name)) == 0){
 			emit tagNameAndDetail(name,QString::fromStdString(selecTag.detail));
 		}
